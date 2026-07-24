@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.*
+!.envexample
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Editor files
+.vscode/
+.idea/
+
+# Local backups and archives
+zip/
+*.zip
+
+# Operating system files
+.DS_Store
+Thumbs.db
