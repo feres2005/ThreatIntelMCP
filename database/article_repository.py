@@ -3,18 +3,28 @@ import json
 
 from database.connection import engine
 
+
 def insert_article(article):
   with engine.connect() as connection:
     query=text("""
-    INSERT INTO articles (title, link, published, summary)
-    VALUES (:title, :link, :published, :summary)
-    ON CONFLICT (link) DO NOTHING;
+    INSERT INTO articles (title, link, published, summary, source)
+    VALUES (:title, :link, :published, :summary, :source)
+    ON CONFLICT (link) DO UPDATE SET
+      published = COALESCE(
+        articles.published,
+        EXCLUDED.published
+      ),
+      source = COALESCE(
+        articles.source,
+        EXCLUDED.source
+      );
     """)
     connection.execute(query,{
       "title":article["title"],  
       "link":article["link"],
-      "published":None,
-      "summary":article["summary"]
+      "published":article["published"],
+      "summary":article["summary"],
+      "source" :article["source"],
     })
     connection.commit()
 
@@ -222,3 +232,48 @@ def get_article_details(article_id):
     "affected_technologies":row.affected_technologies,
   }
 
+def get_articles_missing_publication_date(source,limit):
+  query=text(
+    """
+    SELECT
+      id,
+      link,
+      source
+    FROM articles
+    WHERE published IS NULL
+    AND source = :source
+    ORDER BY id ASC
+    LIMIT :limit;
+    """
+  )
+  with engine.connect() as connection:
+    result=connection.execute(query,{"source":source,"limit":limit})
+    rows= result.fetchall()
+
+  return[
+      {
+        "article_id":row.id,
+        "link":row.link,
+        "source":row.source,
+      }
+      for row in rows
+  ] 
+
+def update_article_publication_date(article_id, published):
+  query = text("""
+    UPDATE articles
+    SET published = :published
+    WHERE id = :article_id
+      AND published IS NULL;
+  """)
+
+  with engine.begin() as connection:
+    result = connection.execute(
+      query,
+      {
+        "article_id": article_id,
+        "published": published,
+      }
+    )
+
+  return result.rowcount == 1

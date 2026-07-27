@@ -1,0 +1,9 @@
+anthropic==0.115.1
+SQLAlchemy==2.0.51
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+feedparser==6.0.12
+requests==2.34.2
+beautifulsoup4==4.15.0
+mcp==1.28.1
+python-dateutil==2.9.0.post0
