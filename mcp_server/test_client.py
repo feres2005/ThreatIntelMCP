@@ -21,26 +21,20 @@ async def main():
 
       for tool in tools.tools:
         print("-", tool.name)
-      article_result=await session.call_tool(
-        "get_threat_article_details",
-        {
-          "article_id":2562
-        }
-      )
-      result = await session.call_tool(
-        "lookup_otx_indicator",
-        {
-            "indicator": "1.1.1.1",
-            "indicator_type": "IPv4",
-        },
-    )
 
-      print("\nOTX indicator details:")
-      print(result.content)
-      
-      
-      
-      
+      semantic_result = await session.call_tool(
+        "semantic_search_threat_articles",
+        {
+          "search_query": (
+            "security flaws in wireless file sharing "
+            "that allow nearby attackers to compromise devices"
+          ),
+          "limit": 5,
+        },
+      )
+
+      print("\nSemantic search results:")
+      print(semantic_result.content)
 
 if __name__ == "__main__":
   asyncio.run(main())

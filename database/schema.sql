@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict p3Sg9uIIf05KaeKkFKtYgQcNwLJaN1Ncfui5TK6A5XfSBVaFBW1oOPwuUMazv3h
+\restrict be3pPE7rOnU9Rc29wuTIQG0ugupcWEoGifhwSknoVAKybvCeCSspdrwcmvDklZJ
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -18,6 +18,20 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: vector; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
+
 
 SET default_tablespace = '';
 
@@ -72,9 +86,10 @@ CREATE TABLE public.articles (
     id integer NOT NULL,
     title text NOT NULL,
     link text NOT NULL,
-    published timestamp without time zone,
+    published timestamp with time zone,
     summary text,
-    processed boolean DEFAULT false
+    processed boolean DEFAULT false,
+    source text NOT NULL
 );
 
 
@@ -172,6 +187,20 @@ CREATE SEQUENCE public.github_advisory_vulnerabilities_id_seq
 --
 
 ALTER SEQUENCE public.github_advisory_vulnerabilities_id_seq OWNED BY public.github_advisory_vulnerabilities.id;
+
+
+--
+-- Name: intelligence_embeddings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.intelligence_embeddings (
+    entity_type text NOT NULL,
+    entity_id text NOT NULL,
+    embedding public.vector(384) NOT NULL,
+    embedding_model text NOT NULL,
+    content_hash text NOT NULL,
+    embedded_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 
 
 --
@@ -279,6 +308,14 @@ ALTER TABLE ONLY public.github_advisory_vulnerabilities
 
 
 --
+-- Name: intelligence_embeddings intelligence_embeddings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.intelligence_embeddings
+    ADD CONSTRAINT intelligence_embeddings_pkey PRIMARY KEY (entity_type, entity_id);
+
+
+--
 -- Name: mitre_techniques mitre_techniques_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -330,5 +367,5 @@ ALTER TABLE ONLY public.github_advisory_vulnerabilities
 -- PostgreSQL database dump complete
 --
 
-\unrestrict p3Sg9uIIf05KaeKkFKtYgQcNwLJaN1Ncfui5TK6A5XfSBVaFBW1oOPwuUMazv3h
+\unrestrict be3pPE7rOnU9Rc29wuTIQG0ugupcWEoGifhwSknoVAKybvCeCSspdrwcmvDklZJ
 

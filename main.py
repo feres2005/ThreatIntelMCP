@@ -5,6 +5,7 @@ from collectors.rss_collector import collect_articles
 from database.github_advisory_repository import *
 from database.article_repository import *
 from collectors.mitre_collector import collect_mitre_techniques
+from semantic_search.article_embedding_service import (index_article,index_missing_articles)
 
 from database.cve_repository import *
 
@@ -21,6 +22,15 @@ def run_ingestion_pipeline():
 
   for article in articles:
     insert_article(article)
+
+  if articles:
+    embedding_result=index_missing_articles(len(articles))
+
+    created_embeddings=sum(
+      result["status"]=="created" for result in embedding_result
+    )
+    print (f"Created {created_embeddings} new embeddings for articles")
+
   
   total = count_articles()
   print("ingestion completed")
@@ -36,6 +46,12 @@ def run_ingestion_pipeline():
       print('analysis failed skipping article')
       return
     save_article_analysis(analysis)
+
+    embedding_result=index_article(article.id)
+    print(f"article embedding status:"
+          f"{embedding_result['status']}"
+    )
+
 
 
     #checking if there are cves(enrichement) else skip them and print a message 

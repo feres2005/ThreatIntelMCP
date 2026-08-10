@@ -25,6 +25,9 @@ from database.mitre_repository import (
     search_mitre_techniques as search_mitre_techniques_db,
     get_mitre_technique_details as get_mitre_technique_details_db,
 )
+from semantic_search.search_service import (
+  semantic_search_articles,
+)
 
 from database.otx_repository import ( get_otx_indicator_details,get_otx_last_checked,)
 from collectors.otx_collector import enrich_otx_indicator 
@@ -38,8 +41,36 @@ def ping() -> str:
 
 @mcp.tool()
 def search_threat_articles(keyword:str)->list:
-  """Search analyzed threat articles by title or AI-generated summary."""
+  """Search analyzed threat articles using an exact keyword match.
+
+  Use this tool when the analyst provides a known title fragment,
+  malware name, vulnerability identifier, or other exact term."""
   return search_articles(keyword)
+
+@mcp.tool()
+def semantic_search_threat_articles(
+  search_query: str,
+  limit: int = 10,
+) -> list:
+  """
+  Search threat articles by semantic meaning rather than exact keywords.
+
+  Use this tool when an analyst describes a threat, attack scenario,
+  vulnerability, or security concept in natural language. Queries may
+  be written in English or French.
+
+  Args:
+      search_query: Natural-language description of the threat or topic.
+      limit: Maximum number of ranked results to return, from 1 to 50.
+
+  Returns:
+      Articles ranked by cosine similarity, including their similarity
+      score, title, summary, source, link, and publication date.
+  """
+  return semantic_search_articles(
+    search_query=search_query,
+    limit=limit,
+  )
 
 @mcp.tool()
 def get_threat_article_details(article_id :int)->dict|None:
