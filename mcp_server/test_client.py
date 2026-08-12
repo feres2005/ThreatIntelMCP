@@ -1,6 +1,5 @@
 import asyncio
 import sys
-
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -35,6 +34,7 @@ async def main():
 
       print("\nSemantic search results:")
       print(semantic_result.content)
+  await asyncio.sleep(0.2)
 
 if __name__ == "__main__":
   asyncio.run(main())

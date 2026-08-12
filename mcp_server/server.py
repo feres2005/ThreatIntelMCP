@@ -1,14 +1,18 @@
+
+import asyncio
+
 from mcp.server.fastmcp import FastMCP
 from datetime import datetime, timedelta
 from database.article_repository import (
   search_articles,
-  get_article_details  
+  get_article_details
 )
 
 from database.cve_repository import(
   search_cves as search_cves_db,
-  get_cve_details as get_cve_details_db  
+  get_cve_details as get_cve_details_db
 )
+from semantic_search.embedding_service import get_embedding_model
 
 from database.threat_search import(
   search_malware as search_malware_db,
@@ -30,7 +34,7 @@ from semantic_search.search_service import (
 )
 
 from database.otx_repository import ( get_otx_indicator_details,get_otx_last_checked,)
-from collectors.otx_collector import enrich_otx_indicator 
+from collectors.otx_collector import enrich_otx_indicator
 mcp = FastMCP("ThreatIntelMCP")
 
 
@@ -48,11 +52,11 @@ def search_threat_articles(keyword:str)->list:
   return search_articles(keyword)
 
 @mcp.tool()
-def semantic_search_threat_articles(
-  search_query: str,
-  limit: int = 10,
-) -> list:
-  """
+async def semantic_search_threat_articles(
+    search_query: str,
+    limit: int = 10,
+    ) -> list:
+    """
   Search threat articles by semantic meaning rather than exact keywords.
 
   Use this tool when an analyst describes a threat, attack scenario,
@@ -60,18 +64,22 @@ def semantic_search_threat_articles(
   be written in English or French.
 
   Args:
-      search_query: Natural-language description of the threat or topic.
-      limit: Maximum number of ranked results to return, from 1 to 50.
+    search_query: Natural-language description of the threat or topic.
+    limit: Maximum number of ranked results to return, from 1 to 50.
 
   Returns:
-      Articles ranked by cosine similarity, including their similarity
-      score, title, summary, source, link, and publication date.
+    Articles ranked by cosine similarity, including their similarity
+    score, title, summary, source, link, and publication date.
   """
-  return semantic_search_articles(
-    search_query=search_query,
-    limit=limit,
-  )
 
+
+    results = await asyncio.to_thread(
+      semantic_search_articles,
+      search_query,
+      limit,
+    )
+
+    return results
 @mcp.tool()
 def get_threat_article_details(article_id :int)->dict|None:
   """Return complete intelligence details for a specific article ID."""
@@ -192,4 +200,5 @@ def lookup_otx_indicator(
 
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+  get_embedding_model()
+  mcp.run(transport="stdio")

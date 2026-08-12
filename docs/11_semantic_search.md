@@ -352,3 +352,17 @@ Le module apporte au serveur MCP une capacité de recherche fondée sur le sens 
 L’utilisation d’un modèle multilingue permet aux analystes d’interroger la plateforme en français ou en anglais. Le mécanisme de hash évite les calculs inutiles, tandis que l’intégration MCP permet à l’agent conversationnel d’utiliser cette intelligence sans exposer la complexité technique à l’utilisateur.
 
 Cette réalisation répond à l’objectif de recherche sémantique défini dans le cahier des charges du PFE et constitue une base extensible pour les futures capacités avancées de la plateforme.
+
+## Compatibilité avec MCP stdio sous Windows
+
+Sous Windows, le chargement initial de Sentence Transformers après le
+démarrage du transport MCP stdio peut provoquer un blocage. Ce comportement
+est lié au chargement des bibliothèques scientifiques natives pendant que le
+transport asynchrone lit déjà les entrées standard.
+
+Pour éviter ce blocage, le modèle d'embedding est chargé une seule fois avant
+le démarrage du serveur MCP :
+
+```python
+get_embedding_model()
+mcp.run(transport="stdio")
