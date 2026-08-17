@@ -10,9 +10,11 @@ from database.article_repository import (
 
 from database.cve_repository import(
   search_cves as search_cves_db,
-  get_cve_details as get_cve_details_db
+
 )
-from semantic_search.embedding_service import get_embedding_model
+
+from enrichment.cve_lookup_service import lookup_cve
+
 
 from database.threat_search import(
   search_malware as search_malware_db,
@@ -29,14 +31,13 @@ from database.mitre_repository import (
     search_mitre_techniques as search_mitre_techniques_db,
     get_mitre_technique_details as get_mitre_technique_details_db,
 )
-from semantic_search.search_service import (
-  semantic_search_articles,
+from semantic_search.subprocess_service import (
+  run_semantic_search_worker,
 )
 
 from database.otx_repository import ( get_otx_indicator_details,get_otx_last_checked,)
 from collectors.otx_collector import enrich_otx_indicator
 mcp = FastMCP("ThreatIntelMCP")
-
 
 @mcp.tool()
 def ping() -> str:
@@ -73,13 +74,10 @@ async def semantic_search_threat_articles(
   """
 
 
-    results = await asyncio.to_thread(
-      semantic_search_articles,
+    return await run_semantic_search_worker(
       search_query,
       limit,
     )
-
-    return results
 @mcp.tool()
 def get_threat_article_details(article_id :int)->dict|None:
   """Return complete intelligence details for a specific article ID."""
@@ -90,10 +88,17 @@ def search_cves(keyword :str)-> list:
   return search_cves_db(keyword)
 
 @mcp.tool()
-def get_cve_details(cve_id: str)->dict |None:
-  """Return complete enrichment details for a specific CVE identifier."""
-  return get_cve_details_db(cve_id)
+async def get_cve_details(cve_id: str) -> dict | None:
+  """
+  Retrieve complete details for an exact CVE identifier.
 
+  The local PostgreSQL cache is used when fresh. Missing or stale
+  records are automatically refreshed from NVD before being returned.
+  """
+  return await asyncio.to_thread(
+    lookup_cve,
+    cve_id,
+  )
 @mcp.tool()
 def search_malware(keyword: str)->list:
   """search articles mentioning a malware family"""
@@ -200,5 +205,4 @@ def lookup_otx_indicator(
 
 
 if __name__ == "__main__":
-  get_embedding_model()
   mcp.run(transport="stdio")

@@ -13,16 +13,16 @@ def save_cve_enrichment(enriched_cve):
       severity,
       published,
       last_modified,
-      reference_links            
+      reference_links
       )
     VALUES(
       :cve_id,
       :description,
-      :cvss_score,           
-      :severity,           
+      :cvss_score,
+      :severity,
       :published,
-      :last_modified,          
-      :reference_links           
+      :last_modified,
+      :reference_links
     )
     ON CONFLICT (cve_id) DO UPDATE SET
      description = EXCLUDED.description,
@@ -30,20 +30,25 @@ def save_cve_enrichment(enriched_cve):
      severity = EXCLUDED.severity,
      published = EXCLUDED.published,
      last_modified=EXCLUDED.last_modified,
-     reference_links=EXCLUDED.reference_links;                   
+     reference_links=EXCLUDED.reference_links,
+     enriched_at = CURRENT_TIMESTAMP;
   """
-    )
-    connection.execute(query,{
-      "cve_id":enriched_cve["cve_id"],
-      "description":enriched_cve["description"],
-      "cvss_score":enriched_cve["cvss_score"],
-      "severity":enriched_cve["severity"],
-      "published":enriched_cve["published"],
-      "last_modified":enriched_cve["last_modified"],
-      "reference_links":json.dumps(enriched_cve["reference_links"])
-  })
-    connection.commit()
 
+    )
+    connection.execute(query, {
+      "cve_id": enriched_cve["cve_id"],
+      "description": enriched_cve["description"],
+      "cvss_score": enriched_cve["cvss_score"],
+      "severity": enriched_cve["severity"],
+      "published": enriched_cve["published"],
+      "last_modified": enriched_cve["last_modified"],
+      "reference_links": json.dumps(
+        enriched_cve["reference_links"]
+      ),
+    })
+
+
+    connection.commit()
 
 
 
@@ -74,7 +79,7 @@ def search_cves(keyword):
       {"keyword": f"%{keyword}%"}
     )
     rows=result.fetchall()
-  
+
   cves=[]
   for row in rows:
     cves.append({
@@ -83,7 +88,7 @@ def search_cves(keyword):
       "cvss_score":(
         float(row.cvss_score)
         if row.cvss_score is not None
-        else None  
+        else None
       ),
       "severity" :row.severity,
       "published":(
@@ -109,10 +114,11 @@ def get_cve_details(cve_id):
       severity,
       published,
       last_modified,
-      reference_links
+      reference_links,
+      enriched_at
     FROM cve_enrichment
     WHERE cve_id = :cve_id;
-    
+
 """
   )
 
@@ -144,6 +150,24 @@ def get_cve_details(cve_id):
         if row.last_modified is not None
         else None
       ),
-      "reference_links":row.reference_links
+      "reference_links":row.reference_links,
+            "enriched_at": (
+        row.enriched_at.isoformat()
+        if row.enriched_at is not None
+        else None
+      ),
     }
-  
+
+def get_cve_last_enriched_at(cve_id):
+  query = text("""
+    SELECT enriched_at
+    FROM cve_enrichment
+    WHERE cve_id = :cve_id;
+  """)
+
+  with engine.connect() as connection:
+    result = connection.execute(
+      query,
+      {"cve_id": cve_id},
+    )
+    return result.scalar_one_or_none()

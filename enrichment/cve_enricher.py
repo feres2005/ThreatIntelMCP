@@ -10,7 +10,7 @@ def get_preffered_description(descriptions):
    if not isinstance(descriptions,list):
       return ""
    for description in descriptions:
-      if not isinstance(descriptions,dict):
+      if not isinstance(description,dict):
          continue
       lang=description.get("lang")
       value=description.get("value")

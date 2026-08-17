@@ -142,3 +142,43 @@ Enregistrement dans PostgreSQL
 
 Cette architecture modulaire permet de découpler les différentes étapes du traitement tout en garantissant la cohérence des données manipulées par l'ensemble de la plateforme. Elle constitue une base solide pour l'ajout futur d'autres sources de Threat Intelligence, telles que MITRE ATT&CK, CISA KEV ou d'autres services d'enrichissement spécialisés.
 
+## 5.7 Actualisation automatique et mise en cache des CVE
+
+Afin d'éviter que les informations relatives aux vulnérabilités deviennent obsolètes, la plateforme utilise un mécanisme de cache avec actualisation automatique. Ce mécanisme est appliqué lors de la consultation exacte d'une CVE à travers le service MCP.
+
+Chaque enregistrement de la table `cve_enrichment` possède un champ `enriched_at`. Ce champ indique la date et l'heure auxquelles les informations ont été récupérées ou actualisées depuis la NVD. Une durée maximale de validité de 24 heures est utilisée pour déterminer si le contenu local est encore suffisamment récent.
+
+Lorsqu'une CVE est demandée, le service applique les règles suivantes :
+
+1. L'identifiant est nettoyé, converti en majuscules et validé selon le format `CVE-YYYY-NNNN`.
+2. Le service recherche la CVE dans PostgreSQL.
+3. Si la CVE existe et que son champ `enriched_at` date de moins de 24 heures, le contenu local est retourné directement.
+4. Si la CVE est absente ou si le cache a expiré, le service interroge l'API de la NVD.
+5. Les données récupérées sont normalisées puis enregistrées avec une opération d'insertion ou de mise à jour.
+6. Le nouvel enregistrement est ensuite retourné au client MCP.
+7. Si la NVD est temporairement indisponible mais qu'une ancienne version existe localement, cette version est retournée comme solution de repli.
+
+Le fonctionnement peut être résumé ainsi :
+
+```text
+Demande d'une CVE
+        |
+        v
+Validation de l'identifiant
+        |
+        v
+Recherche dans PostgreSQL
+        |
+        v
+Cache présent et récent ?
+   |                |
+  Oui              Non
+   |                |
+   v                v
+Retour local    Interrogation de la NVD
+                    |
+                    v
+            Normalisation et sauvegarde
+                    |
+                    v
+               Retour du résultat

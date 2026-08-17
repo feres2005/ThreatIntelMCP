@@ -355,14 +355,38 @@ Cette réalisation répond à l’objectif de recherche sémantique défini dans
 
 ## Compatibilité avec MCP stdio sous Windows
 
-Sous Windows, le chargement initial de Sentence Transformers après le
-démarrage du transport MCP stdio peut provoquer un blocage. Ce comportement
-est lié au chargement des bibliothèques scientifiques natives pendant que le
-transport asynchrone lit déjà les entrées standard.
+Sous Windows, le chargement de Sentence Transformers, NumPy et SciPy dans le processus principal du serveur MCP peut provoquer un blocage du transport `stdio`. Ces bibliothèques chargent plusieurs composants natifs pendant que le serveur MCP utilise déjà des threads et des flux asynchrones pour communiquer avec le client.
 
-Pour éviter ce blocage, le modèle d'embedding est chargé une seule fois avant
-le démarrage du serveur MCP :
+Le chargement complet du modèle avant le démarrage du serveur n'est pas une solution suffisante. Il retarde la réponse à la requête d'initialisation et peut dépasser le délai maximal de 60 secondes appliqué par Claude Desktop.
 
-```python
-get_embedding_model()
-mcp.run(transport="stdio")
+Afin de séparer le traitement scientifique du transport MCP, la recherche sémantique est exécutée dans un processus Python isolé.
+
+Le module `semantic_search/search_worker.py` reçoit la requête et la limite, charge le modèle d'embedding, effectue la recherche vectorielle et sérialise le résultat au format JSON.
+
+Le module `semantic_search/subprocess_service.py` est responsable du lancement et de la supervision de ce processus. Il capture ses sorties, impose un délai maximal d'exécution et convertit le résultat JSON en objets Python avant de le transmettre au serveur MCP.
+
+Le flux d'exécution est le suivant :
+
+```text
+Claude Desktop
+      |
+      v
+Serveur MCP
+      |
+      v
+subprocess_service.py
+      |
+      v
+Processus Python isolé
+      |
+      v
+Sentence Transformers et recherche pgvector
+      |
+      v
+Résultat JSON capturé
+      |
+      v
+Serveur MCP
+      |
+      v
+Claude Desktop

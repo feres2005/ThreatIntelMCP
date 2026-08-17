@@ -205,22 +205,38 @@ le niveau de sévérité ;
 les dates de publication et de dernière modification.
 
 ### 6.5.5 Outil get_cve_details
+
 Objectif
 
-L'outil get_cve_details permet d'obtenir les informations complètes concernant une vulnérabilité CVE spécifique après son enrichissement par la base NVD.
+L'outil `get_cve_details` permet de récupérer les informations complètes d'une vulnérabilité à partir de son identifiant CVE exact. Contrairement à `search_cves`, cet outil peut actualiser automatiquement les données locales depuis la National Vulnerability Database (NVD).
 
 Paramètres
-cve_id : identifiant de la vulnérabilité.
+
+`cve_id` : identifiant exact de la vulnérabilité au format `CVE-YYYY-NNNN`.
+
+Fonctionnement
+
+L'identifiant reçu est d'abord nettoyé, converti en majuscules et validé. L'outil consulte ensuite la base PostgreSQL afin de vérifier si la vulnérabilité est déjà disponible localement.
+
+Si l'enregistrement existe et a été enrichi depuis moins de 24 heures, il est retourné directement. Si la CVE est absente ou si ses données sont trop anciennes, l'outil interroge la NVD, normalise la réponse et met à jour la base locale avant de retourner le résultat.
+
+Lorsque la NVD est temporairement indisponible, une ancienne version présente dans la base peut être retournée afin de maintenir la disponibilité du service. Si aucune version locale n'existe et que la récupération distante échoue, l'outil retourne une valeur nulle.
+
+L'appel au service d'enrichissement est exécuté dans un thread de travail à l'aide de `asyncio.to_thread`. Cette approche évite qu'une requête HTTP vers la NVD bloque la boucle asynchrone du serveur MCP.
+
 Résultat
 
-Retourne les informations détaillées de la vulnérabilité, notamment :
+L'outil retourne notamment :
 
-la description ;
-le score CVSS ;
-le niveau de sévérité ;
-les dates de publication et de mise à jour ;
-les liens de référence officiels.
+- l'identifiant CVE ;
+- la description ;
+- le score CVSS ;
+- le niveau de sévérité ;
+- les dates de publication et de dernière modification ;
+- les liens de référence ;
+- la date du dernier enrichissement local, représentée par `enriched_at`.
 
+Un identifiant ne respectant pas le format attendu est rejeté avant toute interrogation de la base de données ou de la NVD.
 ### 6.5.6 Outil search_malware
 Objectif
 

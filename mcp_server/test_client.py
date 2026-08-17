@@ -34,6 +34,27 @@ async def main():
 
       print("\nSemantic search results:")
       print(semantic_result.content)
+
+      cve_result=await session.call_tool(
+        "get_cve_details",
+        {
+          "cve_id":"CVE-2026-55255",
+        },
+      )
+      print("\nCVE lookup result:")
+      print(cve_result.content)
+
+
+      invalid_cve_result = await session.call_tool(
+        "get_cve_details",
+        {
+          "cve_id": "not-a-cve",
+        },
+      )
+
+      print("\nInvalid CVE result:")
+      print("Is error:", invalid_cve_result.isError)
+      print(invalid_cve_result.content)
   await asyncio.sleep(0.2)
 
 if __name__ == "__main__":
