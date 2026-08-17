@@ -4,76 +4,113 @@ ThreatIntelMCP is an intelligent Threat Intelligence platform developed in Pytho
 
 The platform collects cybersecurity intelligence from OSINT and CTI sources, analyzes and enriches it using artificial intelligence and external intelligence providers, stores the resulting intelligence in PostgreSQL, and exposes it through the Model Context Protocol (MCP) to conversational assistants such as Claude Desktop.
 
+
 ## Project Status
 
 **Status:** Active development
-**Current milestone:** PFE Version 1
-**Estimated overall PFE completion:** approximately 68%
+**Current milestone:** PFE Version 1 completion and stabilization
+**Estimated overall PFE completion:** approximately 72%
+**Technical platform completion:** approximately 80%
 **Functional end-to-end prototype:** operational
 
 The following pipeline is currently functional:
 
 ```text
-Collection
-→ PostgreSQL
-→ AI analysis
+Threat collection
+→ PostgreSQL storage
+→ AI article analysis
 → IoC and CVE extraction
-→ threat enrichment
+→ CVE and indicator enrichment
 → semantic retrieval
-→ MCP response
+→ structured MCP response
 → Claude Desktop
 ```
 
 ### Completed
 
 * [x] RSS collection from cybersecurity sources
-* [x] PostgreSQL database with SQLAlchemy Core
+* [x] PostgreSQL database using SQLAlchemy Core
 * [x] AI-powered article analysis with Claude
-* [x] IoC, CVE, malware, APT and MITRE ATT&CK extraction
+* [x] Extraction of IoCs, CVEs, malware, APT groups and MITRE ATT&CK techniques
 * [x] NVD CVE enrichment
+* [x] On-demand retrieval of unknown CVEs from NVD
+* [x] Automatic 24-hour CVE cache freshness management
+* [x] Fallback to cached CVE intelligence when NVD is unavailable
 * [x] GitHub Security Advisories integration
-* [x] MITRE ATT&CK integration
-* [x] AlienVault OTX integration
+* [x] MITRE ATT&CK integration for Enterprise, Mobile and ICS domains
+* [x] AlienVault OTX indicator lookup
 * [x] Local OTX cache with automatic 24-hour refresh
-* [x] MCP server and Threat Intelligence tools
+* [x] MCP server with structured Threat Intelligence tools
 * [x] Claude Desktop integration
-* [x] Semantic article search with pgvector
+* [x] Semantic article search using pgvector
 * [x] Multilingual semantic queries in English and French
 * [x] Automatic article embedding maintenance
-* [x] French technical documentation for completed modules
+* [x] Isolated semantic-search subprocess for reliable MCP stdio operation on Windows
 * [x] Database migrations and schema export
+* [x] French technical documentation for completed modules
+* [x] Functional end-to-end and Claude Desktop validation
 
 ### Partially Completed
 
-* [~] Automatic intelligence freshness
+* [~] Automatic IoC enrichment
 
-  * OTX indicators are refreshed automatically.
-  * Unknown or stale CVEs are not yet fetched automatically during exact lookup.
+  * OTX indicator lookup and cache refresh are operational.
+  * AI-extracted IoCs are not yet validated, typed and enriched automatically during article processing.
+  * Strict normalization is required to distinguish supported indicators from package names, filenames and other observables.
+
 * [~] Automatic threat correlation
 
   * AI analysis extracts CVEs, MITRE techniques, APT groups, targeted sectors and affected technologies.
-  * A dedicated multi-source correlation engine is still required.
+  * The platform can retrieve information from several intelligence sources.
+  * A deterministic multi-source correlation engine is still required.
+
+* [~] Threat scoring and prioritization
+
+  * Article severity, AI confidence, CVSS scores and OTX reputation data are available.
+  * These factors are not yet combined into a transparent unified threat score.
+
 * [~] Conversational SOC assistant
 
-  * Claude Desktop can select and call investigation tools automatically.
-  * Collection and analysis actions are not yet exposed as MCP actions.
+  * Claude Desktop can autonomously select and call investigation tools.
+  * Collection, analysis and refresh operations are not yet fully exposed as controlled MCP actions.
+
+* [~] Continuous intelligence automation
+
+  * Individual collectors, enrichment services and the ingestion pipeline are operational.
+  * Recurring collection and processing still require scheduling and execution controls.
+
 * [~] Testing
 
-  * Features have been validated incrementally and end-to-end.
-  * A consolidated automated test suite is still required.
+  * Features have been tested incrementally, through the MCP client and with Claude Desktop.
+  * A consolidated automated unit, integration and regression test suite is still required.
+
+* [~] Documentation
+
+  * Technical documentation exists for the implemented modules.
+  * The user manual, consolidated API reference and final PFE report remain incomplete.
 
 ### Remaining Mandatory PFE Capabilities
 
-* [ ] On-demand CVE enrichment and freshness management
-* [ ] Threat scoring and prioritization
-* [ ] Topic modelling and emerging-threat detection
-* [ ] Advanced automatic correlation
-* [ ] REST API
-* [ ] Additional MCP actions where justified
-* [ ] Automated regression and integration tests
+* [ ] Strict IoC normalization and type validation
+* [ ] Automatic enrichment of supported AI-extracted IoCs
+* [ ] Multi-source IoC and threat correlation
+* [ ] Transparent threat scoring and prioritization
+* [ ] Controlled MCP actions for collection and analysis
+* [ ] Continuous or scheduled ingestion
+* [ ] Minimal REST API
+* [ ] Automated unit, integration and regression tests
 * [ ] User manual
-* [ ] Consolidated API documentation
+* [ ] Consolidated MCP and REST API documentation
 * [ ] Final PFE report and demonstration material
+
+### Optional or Future Capabilities
+
+* [ ] Topic modelling and emerging-threat detection
+* [ ] Advanced search filters, pagination and sorting
+* [ ] Additional intelligence sources such as URLhaus, MISP or VirusTotal
+* [ ] Dashboard and visualization interface
+* [ ] Production deployment and monitoring
+
 
 ## Current Data Sources
 
