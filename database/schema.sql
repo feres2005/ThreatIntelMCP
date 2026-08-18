@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict be3pPE7rOnU9Rc29wuTIQG0ugupcWEoGifhwSknoVAKybvCeCSspdrwcmvDklZJ
+\restrict VIvrT3ZfW9vdLC06QgTJgwDfOQ0TTiNbaiDcOuDwS50UZvuJePNnwwiblqU1vaq
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -76,6 +76,20 @@ CREATE SEQUENCE public.article_analysis_article_id_seq
 --
 
 ALTER SEQUENCE public.article_analysis_article_id_seq OWNED BY public.article_analysis.article_id;
+
+
+--
+-- Name: article_iocs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.article_iocs (
+    article_id integer NOT NULL,
+    indicator text NOT NULL,
+    indicator_type text NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT article_iocs_indicator_not_empty CHECK ((btrim(indicator) <> ''::text)),
+    CONSTRAINT article_iocs_type_valid CHECK ((indicator_type = ANY (ARRAY['IPv4'::text, 'IPv6'::text, 'domain'::text, 'URL'::text, 'FileHash-MD5'::text, 'FileHash-SHA1'::text, 'FileHash-SHA256'::text])))
+);
 
 
 --
@@ -276,6 +290,14 @@ ALTER TABLE ONLY public.article_analysis
 
 
 --
+-- Name: article_iocs article_iocs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.article_iocs
+    ADD CONSTRAINT article_iocs_pkey PRIMARY KEY (article_id, indicator, indicator_type);
+
+
+--
 -- Name: articles articles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -348,11 +370,26 @@ ALTER TABLE ONLY public.articles
 
 
 --
+-- Name: idx_article_iocs_indicator; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_article_iocs_indicator ON public.article_iocs USING btree (indicator, indicator_type);
+
+
+--
 -- Name: article_analysis fk_article_analysis_article; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.article_analysis
     ADD CONSTRAINT fk_article_analysis_article FOREIGN KEY (article_id) REFERENCES public.articles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: article_iocs fk_article_iocs_article; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.article_iocs
+    ADD CONSTRAINT fk_article_iocs_article FOREIGN KEY (article_id) REFERENCES public.articles(id) ON DELETE CASCADE;
 
 
 --
@@ -367,5 +404,5 @@ ALTER TABLE ONLY public.github_advisory_vulnerabilities
 -- PostgreSQL database dump complete
 --
 
-\unrestrict be3pPE7rOnU9Rc29wuTIQG0ugupcWEoGifhwSknoVAKybvCeCSspdrwcmvDklZJ
+\unrestrict VIvrT3ZfW9vdLC06QgTJgwDfOQ0TTiNbaiDcOuDwS50UZvuJePNnwwiblqU1vaq
 
