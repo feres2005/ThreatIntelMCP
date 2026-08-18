@@ -105,7 +105,20 @@ def save_article_analysis(analysis):
     :apt_groups,
     :targeted_sectors,
     :affected_technologies
-    )ON CONFLICT (article_id) DO NOTHING;
+    )
+    ON CONFLICT (article_id)
+    DO UPDATE SET
+      summary = EXCLUDED.summary,
+      classification = EXCLUDED.classification,
+      severity = EXCLUDED.severity,
+      confidence_score = EXCLUDED.confidence_score,
+      iocs = EXCLUDED.iocs,
+      cves = EXCLUDED.cves,
+      malware = EXCLUDED.malware,
+      mitre_techniques = EXCLUDED.mitre_techniques,
+      apt_groups = EXCLUDED.apt_groups,
+      targeted_sectors = EXCLUDED.targeted_sectors,
+      affected_technologies = EXCLUDED.affected_technologies;
     """)
     connection.execute(query,{
       "article_id": analysis["article_id"],
