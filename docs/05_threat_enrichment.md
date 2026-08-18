@@ -182,3 +182,20 @@ Retour local    Interrogation de la NVD
                     |
                     v
                Retour du résultat
+
+
+## 5.8 Normalisation et enrichissement des IOC avec OTX
+
+Après l’analyse d’un article par le modèle d’intelligence artificielle, les IOC extraits sont conservés sous leur forme brute dans le champ `article_analysis.iocs`. Une seconde représentation, normalisée et typée, est enregistrée dans la table `article_iocs`.
+
+La fonction `normalize_ioc_list()` nettoie les valeurs, restaure certaines formes défangées telles que `hxxp` et `[.]`, détecte le type de chaque indicateur, rejette les valeurs invalides et supprime les doublons.
+
+Les types pris en charge sont les adresses IPv4 et IPv6, les domaines, les URL ainsi que les empreintes MD5, SHA-1 et SHA-256.
+
+La fonction `replace_article_iocs()` remplace atomiquement les IOC associés à un article. La suppression des anciennes relations et l’insertion des nouvelles sont exécutées dans une même transaction PostgreSQL. En cas d’erreur, l’ensemble de l’opération est annulé afin de préserver les données précédentes.
+
+Chaque IOC normalisé est ensuite transmis au service d’enrichissement OTX. Avant d’interroger l’API distante, le service recherche une version locale dans la table `otx_indicators`. Une donnée datant de moins de 24 heures est retournée directement. Si elle est absente ou expirée, OTX est interrogé et le cache est actualisé.
+
+En cas d’indisponibilité d’OTX, une ancienne version locale est retournée lorsqu’elle existe. Dans le cas contraire, le service retourne `None` sans interrompre le traitement des autres IOC.
+
+Les types internes sont traduits vers les chemins attendus par l’API OTX. Les URL utilisent le chemin `url`, tandis que les empreintes de fichiers utilisent le chemin `file`. Les identifiants stockés dans PostgreSQL conservent néanmoins les types canoniques internes, par exemple `URL` et `FileHash-MD5`.

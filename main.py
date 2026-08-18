@@ -10,6 +10,9 @@ from semantic_search.article_embedding_service import (index_article,index_missi
 from database.cve_repository import *
 
 from database.threat_search import *
+from database.article_ioc_repository import replace_article_iocs
+from enrichment.ioc_normalizer import normalize_ioc_list
+from enrichment.otx_lookup_service import lookup_otx_indicators
 
 def run_ingestion_pipeline():
   print("Starting the ingestion pipeline...")
@@ -46,6 +49,35 @@ def run_ingestion_pipeline():
       print('analysis failed skipping article')
       return
     save_article_analysis(analysis)
+
+    normalized_iocs = normalize_ioc_list(
+      analysis.get("iocs", [])
+    )
+
+    replacement_result = replace_article_iocs(
+      article.id,
+      normalized_iocs,
+    )
+
+    print(
+      "Article IOC replacement result:",
+      replacement_result,
+    )
+
+    otx_results = lookup_otx_indicators(
+      normalized_iocs
+    )
+
+    successful_otx_lookups = sum(
+      result is not None
+      for result in otx_results
+    )
+
+    print(
+      "Successful OTX lookups:"
+      f" {successful_otx_lookups}/"
+      f"{len(normalized_iocs)}"
+    )
 
     embedding_result=index_article(article.id)
     print(f"article embedding status:"
