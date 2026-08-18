@@ -1,7 +1,7 @@
 def normalize_text(value):
   if not isinstance(value, str):
     return ""
-  return " ".join(value.strip())
+  return " ".join(value.split())
 import hashlib
 
 def build_article_passage(title,rss_summary=None,ai_summary=None):
