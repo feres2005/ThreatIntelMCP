@@ -4,7 +4,7 @@ from urllib.parse import urlparse, parse_qs
 import os
 from dotenv import load_dotenv
 
-from ThreatIntelMCP.database.github_advisory_repository import (
+from database.github_advisory_repository import (
     save_github_advisory,
     save_github_advisory_vulnerabilities,
     get_latest_github_advisory_updated_at
