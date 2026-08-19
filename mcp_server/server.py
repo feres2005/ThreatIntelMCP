@@ -2,7 +2,6 @@
 import asyncio
 
 from mcp.server.fastmcp import FastMCP
-from datetime import datetime, timedelta
 from database.article_repository import (
   search_articles,
   get_article_details
@@ -35,9 +34,19 @@ from semantic_search.subprocess_service import (
   run_semantic_search_worker,
 )
 
-from database.otx_repository import ( get_otx_indicator_details,get_otx_last_checked,)
-from collectors.otx_collector import enrich_otx_indicator
+from correlation.article_investigation_service import (
+    get_article_investigation as get_article_investigation_service,
+)
+
 mcp = FastMCP("ThreatIntelMCP")
+
+from enrichment.otx_lookup_service import (
+    lookup_otx_indicator as lookup_otx_indicator_service,
+)
+
+from correlation.indicator_correlation_service import (
+    correlate_indicator as correlate_indicator_service,
+)
 
 @mcp.tool()
 def ping() -> str:
@@ -172,37 +181,55 @@ def lookup_otx_indicator(
     indicator: str,
     indicator_type: str,
 ):
-
     """
-    Look up an IP address, domain, URL, or file hash using the local OTX cache.
-    If the indicator is not present or the cached data is stale, automatically
-    retrieve the latest information from AlienVault OTX, store it locally,
-    and return the complete threat intelligence record.
+    Look up an IP address, domain, URL, or file
+    hash using the tested Day 2 OTX cache service.
     """
-    last_checked = get_otx_last_checked(
+    return lookup_otx_indicator_service(
         indicator,
         indicator_type,
     )
 
-    if last_checked is not None:
-        cache_age = datetime.now() - last_checked
+@mcp.tool()
+def correlate_threat_indicator(
+    indicator: str,
+    include_otx: bool = True,
+) -> dict:
+    """
+    Correlate a supported IOC with articles and
+    related threat entities.
 
-        if cache_age < timedelta(hours=24):
-            return get_otx_indicator_details(
-                indicator,
-                indicator_type,
-            )
+    The result includes supporting articles,
+    CVEs, malware, MITRE techniques, APT groups,
+    targeted sectors, affected technologies,
+    and optional OTX enrichment.
 
-    enrich_otx_indicator(
+    Associations are based on supporting article
+    evidence and do not prove attribution.
+    """
+    return correlate_indicator_service(
         indicator,
-        indicator_type,
+        include_otx=include_otx,
     )
 
-    return get_otx_indicator_details(
-        indicator,
-        indicator_type,
-    )
+@mcp.tool()
+def investigate_threat_article(
+    article_id: int,
+    include_otx: bool = True,
+) -> dict | None:
+    """
+    Build a consolidated threat investigation
+    for an article.
 
+    The result includes the article analysis,
+    validated IOCs, optional OTX enrichment,
+    compact CVE enrichment, and MITRE ATT&CK
+    technique details.
+    """
+    return get_article_investigation_service(
+        article_id,
+        include_otx=include_otx,
+    )
 
 if __name__ == "__main__":
   mcp.run(transport="stdio")

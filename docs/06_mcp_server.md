@@ -406,3 +406,55 @@ Ce chapitre a présenté la conception, le développement et la validation du se
 Les différentes phases de développement, de validation et de tests ont confirmé le bon fonctionnement du serveur ainsi que sa conformité avec les objectifs définis dans le cadre du projet. L'utilisation de Claude Desktop et de l'outil officiel MCP Inspector a permis de valider aussi bien les scénarios d'utilisation réels que les aspects techniques du protocole MCP.
 
 Cette première version du serveur fournit une architecture stable et évolutive sur laquelle pourront s'appuyer les prochaines étapes du projet. Les développements futurs porteront principalement sur l'intégration de nouvelles sources de Threat Intelligence, l'enrichissement avancé des données ainsi que l'ajout de fonctionnalités de recherche et de corrélation plus avancées.
+
+## 6.10 Intégration des enrichissements et corrélations
+
+Le serveur MCP expose désormais les fonctionnalités d'enrichissement IOC développées lors du Jour 2 ainsi que le moteur de corrélation et d'investigation consolidée développé lors du Jour 3.
+
+Les outils MCP restent des adaptateurs légers. Ils délèguent la validation, l'accès aux données et la logique métier aux services spécialisés afin d'éviter toute duplication.
+
+### 6.10.1 Outil lookup_otx_indicator
+
+L'outil `lookup_otx_indicator` recherche un indicateur dans le cache OTX local. Lorsque les données sont absentes ou expirées, le service peut interroger AlienVault OTX et enregistrer le résultat dans PostgreSQL.
+
+L'outil utilise directement `enrichment/otx_lookup_service.py`. Il bénéficie ainsi de la gestion de la fraîcheur du cache, du mapping des types OTX et du mécanisme de repli vers les données expirées en cas d'indisponibilité externe.
+
+### 6.10.2 Outil correlate_threat_indicator
+
+L'outil `correlate_threat_indicator` accepte un IOC supporté et retourne :
+
+- les articles justificatifs associés ;
+- les vulnérabilités CVE ;
+- les malwares ;
+- les techniques MITRE ATT&CK ;
+- les groupes APT ;
+- les secteurs ciblés ;
+- les technologies affectées ;
+- l'enrichissement OTX facultatif.
+
+Les associations retournées reposent sur les articles justificatifs et ne constituent pas automatiquement une preuve d'attribution.
+
+### 6.10.3 Outil investigate_threat_article
+
+L'outil `investigate_threat_article` construit une investigation consolidée à partir d'un identifiant d'article.
+
+La réponse contient l'analyse IA, les IOC validés, l'enrichissement OTX facultatif, les informations CVE disponibles et les détails des techniques MITRE ATT&CK.
+
+Les enrichissements indisponibles sont représentés explicitement sans provoquer l'échec complet de l'investigation.
+
+### 6.10.4 Validation avec Claude Desktop
+
+Le serveur a été lancé localement avec le transport `stdio` et la commande modulaire `python -m mcp_server.server`.
+
+La configuration utilise le chemin absolu de l'environnement virtuel et la variable `PYTHONPATH`. Les informations sensibles restent stockées dans le fichier `.env`, qui est chargé à partir de la racine du projet.
+
+Les scénarios suivants ont été validés depuis Claude Desktop :
+
+| Scénario | Résultat |
+| --- | --- |
+| Enrichissement OTX de `8.8.8.8` | Succès |
+| Corrélation de `8.8.8.8` | Succès, aucun article justificatif |
+| Investigation CVE de l'article 4836 | `CVE-2026-46242`, CVSS 7.8, sévérité HIGH |
+| Investigation MITRE de l'article 565 | Cinq techniques enrichies |
+
+Ces tests confirment le fonctionnement de la chaîne complète entre Claude Desktop, le serveur MCP, les services métier, PostgreSQL et les sources de Threat Intelligence.
