@@ -47,6 +47,13 @@ from enrichment.otx_lookup_service import (
 from correlation.indicator_correlation_service import (
     correlate_indicator as correlate_indicator_service,
 )
+from scoring.article_scoring_service import (
+    score_article as score_article_service,
+)
+from scoring.indicator_scoring_service import (
+    score_indicator as score_indicator_service,
+)
+
 
 @mcp.tool()
 def ping() -> str:
@@ -228,6 +235,50 @@ def investigate_threat_article(
     """
     return get_article_investigation_service(
         article_id,
+        include_otx=include_otx,
+    )
+
+@mcp.tool()
+def score_threat_article(
+    article_id: int,
+    include_otx: bool = True,
+) -> dict | None:
+    """
+    Calculate explainable threat, confidence,
+    and priority scores for an article.
+
+    The result includes the scoring version,
+    factor breakdowns, warnings, the selected
+    representative OTX indicator, and the
+    recommended SOC action.
+
+    This is an evidence-based threat assessment,
+    not a complete organizational risk score.
+    """
+    return score_article_service(
+        article_id,
+        include_otx=include_otx,
+    )
+
+@mcp.tool()
+def score_threat_indicator(
+    indicator: str,
+    include_otx: bool = True,
+) -> dict:
+    """
+    Calculate explainable threat, confidence,
+    and priority scores for a supported IOC.
+
+    The result combines supporting articles,
+    related threat entities, local CVE and MITRE
+    enrichment, optional OTX evidence, warnings,
+    and the recommended SOC action.
+
+    Correlation indicates co-reporting evidence
+    and does not prove attribution or causality.
+    """
+    return score_indicator_service(
+        indicator,
         include_otx=include_otx,
     )
 

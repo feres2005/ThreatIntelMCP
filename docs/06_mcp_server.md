@@ -458,3 +458,109 @@ Les scénarios suivants ont été validés depuis Claude Desktop :
 | Investigation MITRE de l'article 565 | Cinq techniques enrichies |
 
 Ces tests confirment le fonctionnement de la chaîne complète entre Claude Desktop, le serveur MCP, les services métier, PostgreSQL et les sources de Threat Intelligence.
+
+## 6.11 Intégration du moteur de scoring
+
+Le serveur MCP expose le moteur de scoring explicable développé lors du Jour 4 à travers deux nouveaux outils.
+
+Les outils MCP restent des adaptateurs légers. Ils ne contiennent aucune formule de scoring et délèguent l'ensemble de la logique métier aux services du package `scoring`.
+
+Le serveur expose désormais vingt outils MCP.
+
+### 6.11.1 Outil score_threat_article
+
+L'outil `score_threat_article` calcule une évaluation complète à partir d'un identifiant d'article.
+
+Il accepte les paramètres suivants :
+
+| Paramètre | Type | Description |
+| --- | --- | --- |
+| `article_id` | Entier | Identifiant positif de l'article à évaluer. |
+| `include_otx` | Booléen | Active ou désactive l'enrichissement OTX des IOC de l'article. |
+
+L'outil délègue son traitement à la fonction `score_article()` du module `scoring/article_scoring_service.py`.
+
+La réponse contient notamment :
+
+- l'article évalué ;
+- le score et le niveau de menace ;
+- le score et le niveau de confiance ;
+- le détail des facteurs utilisés ;
+- les avertissements générés ;
+- l'indicateur OTX représentatif éventuellement sélectionné ;
+- le code de priorité ;
+- l'action SOC recommandée ;
+- la version des règles de scoring.
+
+Lorsqu'un article contient plusieurs IOC enrichis, un seul enregistrement OTX représentatif est utilisé afin d'éviter une inflation artificielle du score.
+
+L'outil retourne la valeur `None` lorsque l'article demandé n'existe pas.
+
+### 6.11.2 Outil score_threat_indicator
+
+L'outil `score_threat_indicator` calcule une évaluation complète à partir d'un indicateur de compromission supporté.
+
+Il accepte les paramètres suivants :
+
+| Paramètre | Type | Description |
+| --- | --- | --- |
+| `indicator` | Chaîne de caractères | Adresse IP, domaine, URL ou empreinte de fichier à évaluer. |
+| `include_otx` | Booléen | Active ou désactive l'enrichissement AlienVault OTX. |
+
+Le type de l'indicateur est détecté automatiquement par le module de normalisation développé lors du Jour 2. Le client MCP ne doit donc pas fournir manuellement un type susceptible de contredire la valeur analysée.
+
+L'outil délègue son traitement à la fonction `score_indicator()` du module `scoring/indicator_scoring_service.py`.
+
+Le service réalise les opérations suivantes :
+
+1. normalisation et validation de l'indicateur ;
+2. recherche des articles justificatifs ;
+3. agrégation des entités de menace associées ;
+4. récupération des enrichissements CVE et MITRE locaux ;
+5. récupération facultative des informations OTX ;
+6. calcul du score de menace ;
+7. calcul du score de confiance ;
+8. détermination de la priorité et de l'action recommandée.
+
+Une association observée dans plusieurs articles représente une preuve de co-occurrence. Elle ne constitue pas automatiquement une preuve d'attribution ou de causalité.
+
+### 6.11.3 Nature du résultat
+
+Les résultats retournés par les deux outils constituent des évaluations de menace fondées sur les preuves disponibles dans ThreatIntelMCP.
+
+Ils ne représentent pas un score de risque organisationnel complet. Le moteur ne connaît pas encore :
+
+- la criticité des actifs de l'organisation ;
+- l'exposition réelle de son infrastructure ;
+- les contrôles de sécurité déployés ;
+- l'impact métier potentiel.
+
+Cette distinction est indiquée dans les descriptions des outils afin que le client MCP ne présente pas le résultat comme une mesure absolue du risque.
+
+### 6.11.4 Validation du protocole MCP
+
+Les deux outils ont été validés à travers le transport MCP `stdio` en lançant le serveur avec l'interpréteur Python de l'environnement virtuel du projet.
+
+Le client de test a réalisé les opérations suivantes :
+
+1. initialisation d'une session MCP ;
+2. récupération de la liste des outils ;
+3. vérification de la présence des deux outils de scoring ;
+4. appel de `score_threat_article` ;
+5. appel de `score_threat_indicator` ;
+6. désérialisation et validation des réponses JSON.
+
+Les résultats obtenus sont les suivants :
+
+| Scénario | Résultat |
+| --- | --- |
+| Nombre total d'outils MCP | 20 |
+| Outil `score_threat_article` présent | Succès |
+| Outil `score_threat_indicator` présent | Succès |
+| Scoring de l'article 4836 | Menace 54,4 ; confiance 53,75 ; priorité P1 |
+| Scoring d'un indicateur sans preuve | Menace `Unknown` ; confiance 0 ; priorité P4 |
+| Erreur de protocole MCP | Aucune |
+
+L'option `include_otx=False` a été utilisée pendant ce test afin de valider le chemin local entre le client MCP, le serveur, PostgreSQL, le moteur de corrélation et le moteur de scoring sans dépendre d'un service externe.
+
+Cette validation confirme que les rapports de scoring peuvent être consommés par Claude Desktop ou par tout autre client compatible MCP.
