@@ -1,0 +1,496 @@
+[
+  {
+    "article_id": 11977,
+    "title": "CISA Adds Exploited SharePoint RCE Zero-Day CVE-2026-58644 to KEV",
+    "link": "https://thehackernews.com/2026/07/cisa-adds-exploited-sharepoint-rce-zero.html",
+    "published": null,
+    "rss_summary": "The U.S. Cybersecurity and Infrastructure Security Agency (CISA) on Thursday added a newly patched security flaw impacting Microsoft SharePoint Server to its Known Exploited Vulnerabilities (KEV) catalog, requiring Federal Civilian Executive Branch (FCEB) agencies to apply the fixes by July 19, 2026.\n\nThe vulnerability in question is CVE-2026-58644 (CVSS score: 9.8), a critical deserialization",
+    "processed": true,
+    "ai_summary": "CISA added CVE-2026-58644, a critical remote code execution zero-day vulnerability in Microsoft SharePoint Server, to its Known Exploited Vulnerabilities catalog. Federal agencies must patch by July 19, 2026.",
+    "classification": [
+      "vulnerability",
+      "zero-day"
+    ],
+    "severity": "Critical",
+    "confidence_score": 0.95,
+    "iocs": [],
+    "cves": [
+      "CVE-2026-58644"
+    ],
+    "malware": [],
+    "mitre_techniques": [
+      "T1190"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [
+      "Government"
+    ],
+    "affected_technologies": [
+      "Microsoft SharePoint Server"
+    ],
+    "analysis_created_at": "2026-08-19T13:37:21.557053"
+  },
+  {
+    "article_id": 13265,
+    "title": "How Anthropic plans to watermark Claude's AI-generated text",
+    "link": "https://www.bleepingcomputer.com/news/artificial-intelligence/how-anthropic-plans-to-watermark-claudes-ai-generated-text/",
+    "published": "2026-08-15T00:24:17+01:00",
+    "rss_summary": "It could soon become easier to identify AI-generated content, even if it's not the usual \"It's Not X, it's Y\" type of post you'd come across on LinkedIn and other socials. [...]",
+    "processed": true,
+    "ai_summary": "Anthropic is implementing watermarking technology to identify AI-generated text from Claude, addressing concerns about detecting synthetic content in digital communications and social media.",
+    "classification": [],
+    "severity": "None",
+    "confidence_score": 0.3,
+    "iocs": [],
+    "cves": [],
+    "malware": [],
+    "mitre_techniques": [],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "Claude",
+      "Anthropic"
+    ],
+    "analysis_created_at": "2026-08-19T13:46:05.789760"
+  },
+  {
+    "article_id": 13228,
+    "title": "Lazarus Exploits Windows Zero-Day to Gain SYSTEM Access and Deploy Backdoor",
+    "link": "https://thehackernews.com/2026/08/lazarus-exploits-windows-zero-day-to.html",
+    "published": "2026-08-12T18:39:27+01:00",
+    "rss_summary": "The North Korean threat actor known as Lazarus Group has been attributed to the zero-day exploitation of a newly patched security flaw impacting Microsoft Windows to deliver a never-before-seen backdoor targeting defense and aerospace companies across France, Germany, Brazil, and India.\n\nThe activity, per Check Point Research, is part of Operation Dream Job, a long-running cyber espionage and",
+    "processed": true,
+    "ai_summary": "Lazarus Group exploited a Windows zero-day vulnerability to deliver a novel backdoor targeting defense and aerospace companies in France, Germany, Brazil, and India as part of Operation Dream Job.",
+    "classification": [
+      "zero-day",
+      "APT",
+      "malware",
+      "trojan"
+    ],
+    "severity": "Critical",
+    "confidence_score": 0.9,
+    "iocs": [],
+    "cves": [],
+    "malware": [],
+    "mitre_techniques": [
+      "T1190",
+      "T1547"
+    ],
+    "apt_groups": [
+      "Lazarus Group"
+    ],
+    "targeted_sectors": [
+      "defense",
+      "aerospace"
+    ],
+    "affected_technologies": [
+      "Microsoft Windows"
+    ],
+    "analysis_created_at": "2026-08-19T13:40:48.598182"
+  },
+  {
+    "article_id": 12672,
+    "title": "Qilin Ransomware Attackers Exploit PAN-OS Authentication Bypass for Initial Access",
+    "link": "https://thehackernews.com/2026/07/qilin-ransomware-attackers-exploit-pan.html",
+    "published": "2026-07-21T15:04:57+01:00",
+    "rss_summary": "Threat actors have been observed exploiting a now-patched high-severity Palo Alto Networks PAN-OS vulnerability as an entry point to deploy Qilin (aka Agenda) ransomware on victim environments.\n\nArctic Wolf Labs said it investigated multiple intrusions in June 2026 that began with the exploitation of CVE-2026-0257 (CVSS score: 7.8), an authentication bypass flaw affecting the portal and gateway",
+    "processed": true,
+    "ai_summary": "Threat actors exploited CVE-2026-0257, a high-severity authentication bypass vulnerability in Palo Alto Networks PAN-OS, to deploy Qilin ransomware in multiple intrusions investigated in June 2026.",
+    "classification": [
+      "vulnerability",
+      "ransomware"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [
+      "CVE-2026-0257"
+    ],
+    "malware": [
+      "Qilin",
+      "Agenda"
+    ],
+    "mitre_techniques": [
+      "T1190"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "Palo Alto Networks PAN-OS"
+    ],
+    "analysis_created_at": "2026-08-19T13:40:50.466395"
+  },
+  {
+    "article_id": 11954,
+    "title": "Exposed Server Reveals AI-Assisted Phishing Toolkit Behind WebDAV Malware Campaign",
+    "link": "https://thehackernews.com/2026/07/exposed-server-reveals-ai-assisted.html",
+    "published": "2026-07-20T18:29:50+01:00",
+    "rss_summary": "A malware operator left its delivery server wide open, and Rapid7 pulled down the whole toolkit: 1,048 files spanning lure templates, filename-spoofing tests, execution experiments, droppers, builder notes, and two campaign chains. One was already live against Windows users in Mexico, delivering an infostealer through a fake government ID-lookup site over WebDAV.\n\nWhat makes it more than a",
+    "processed": true,
+    "ai_summary": "An exposed malware delivery server containing an AI-assisted phishing toolkit was discovered by Rapid7, revealing 1,048 files including lure templates, droppers, and builder notes. An active campaign targeting Windows users in Mexico delivered an infostealer through a fake government ID-lookup site using WebDAV.",
+    "classification": [
+      "phishing",
+      "malware",
+      "information-stealer"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [
+      "infostealer"
+    ],
+    "mitre_techniques": [
+      "T1566",
+      "T1566.002",
+      "T1598",
+      "T1187"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [
+      "government"
+    ],
+    "affected_technologies": [
+      "Windows",
+      "WebDAV"
+    ],
+    "analysis_created_at": "2026-08-19T13:40:53.638313"
+  },
+  {
+    "article_id": 13210,
+    "title": "Suspected China-Nexus Actor Exploits VMware vCenter Flaw, Deploys Babuk-Derived Ransomware",
+    "link": "https://thehackernews.com/2026/08/suspected-china-nexus-actor-exploits.html",
+    "published": "2026-08-17T08:36:19+01:00",
+    "rss_summary": "Cybersecurity researchers have attributed the exploitation of a newly patched security flaw in Broadcom VMware vCenter to a suspected China-nexus advanced persistent threat (APT).\n\nThe attacks involve the exploitation of CVE-2026-59310 (CVSS score: 9.8), a severe directory-traversal vulnerability in the VMware vCenter server that could be weaponized by a malicious actor to execute arbitrary code",
+    "processed": true,
+    "ai_summary": "A suspected China-nexus APT exploited CVE-2026-59310, a critical directory-traversal vulnerability in VMware vCenter, to deploy Babuk-derived ransomware.",
+    "classification": [
+      "vulnerability",
+      "APT",
+      "ransomware"
+    ],
+    "severity": "Critical",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [
+      "CVE-2026-59310"
+    ],
+    "malware": [
+      "Babuk"
+    ],
+    "mitre_techniques": [
+      "T1190"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "VMware vCenter",
+      "Broadcom"
+    ],
+    "analysis_created_at": "2026-08-19T13:40:55.924631"
+  },
+  {
+    "article_id": 13261,
+    "title": "Anthropic confirms Claude is down in major outage affecting multiple services",
+    "link": "https://www.bleepingcomputer.com/news/artificial-intelligence/anthropic-confirms-claude-is-down-in-major-outage-affecting-multiple-services/",
+    "published": "2026-08-16T23:28:57+01:00",
+    "rss_summary": "Claude is experiencing a major outage, with users reporting login problems and degraded performance across several Anthropic services. [...]",
+    "processed": true,
+    "ai_summary": "Anthropic's Claude service experienced a major outage causing login problems and degraded performance across multiple services.",
+    "classification": [],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [],
+    "mitre_techniques": [],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "Claude",
+      "Anthropic services"
+    ],
+    "analysis_created_at": "2026-08-19T13:46:07.005453"
+  },
+  {
+    "article_id": 12641,
+    "title": "Chaos ransomware's msaRAT: Living off the browser to build a covert C2 channel",
+    "link": "https://blog.talosintelligence.com/chaos-msarat-living-off-the-browser-to-build-covert-c2-channel/",
+    "published": "2026-07-23T11:00:38+01:00",
+    "rss_summary": "The Chaos ransomware group uses new malware \"msaRAT\" that hijacks browsers. The malware doesn't communicate directly with C2 but connects through the browser. It enables arbitrary command execution while hiding the attacker's IP from victims via WebRTC over TURN.",
+    "processed": true,
+    "ai_summary": "Chaos ransomware group deploys msaRAT malware that hijacks browsers to establish covert C2 channels, executing arbitrary commands while masking attacker IP addresses through WebRTC over TURN protocol.",
+    "classification": [
+      "malware",
+      "ransomware",
+      "trojan"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [
+      "msaRAT",
+      "Chaos ransomware"
+    ],
+    "mitre_techniques": [
+      "T1071",
+      "T1573",
+      "T1059",
+      "T1219"
+    ],
+    "apt_groups": [
+      "Chaos"
+    ],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "Web browsers",
+      "WebRTC",
+      "TURN protocol"
+    ],
+    "analysis_created_at": "2026-08-19T13:43:32.775195"
+  },
+  {
+    "article_id": 11046,
+    "title": "Compromised jscrambler 8.14.0 npm Release Drops Rust Infostealer During Install",
+    "link": "https://thehackernews.com/2026/07/compromised-jscrambler-8140-npm-release.html",
+    "published": null,
+    "rss_summary": "The jscrambler npm package was compromised, and simply installing its&nbsp;8.14.0&nbsp;release runs an infostealer on your machine. Published on July 11, 2026, the malicious version carries a&nbsp;preinstall&nbsp;hook that drops and executes a native binary, one build each for Windows, macOS, and Linux.\n\nSocket flagged the release&nbsp;six minutes after it was published. If you or one of your",
+    "processed": true,
+    "ai_summary": "The jscrambler npm package version 8.14.0 was compromised and contained a malicious preinstall hook that drops and executes a Rust-based infostealer binary for Windows, macOS, and Linux systems during package installation.",
+    "classification": [
+      "malware",
+      "information-stealer",
+      "supply-chain"
+    ],
+    "severity": "Critical",
+    "confidence_score": 0.95,
+    "iocs": [
+      "jscrambler 8.14.0"
+    ],
+    "cves": [],
+    "malware": [
+      "Rust Infostealer"
+    ],
+    "mitre_techniques": [
+      "T1195.001",
+      "T1547.013",
+      "T1005"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "npm",
+      "jscrambler",
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "analysis_created_at": "2026-08-19T13:43:34.834336"
+  },
+  {
+    "article_id": 12751,
+    "title": "BlueNoroff Zoom Phishing Kit Profiles Crypto Wallets Before Malware Delivery",
+    "link": "https://thehackernews.com/2026/07/bluenoroff-zoom-phishing-kit-profiles.html",
+    "published": "2026-07-24T16:12:35+01:00",
+    "rss_summary": "The North Korean threat actors behind the ClickFix-style campaigns that employ typosquatted Zoom and Microsoft Teams domains have been found to operate an active phishing kit to impersonate the videoconferencing platforms in social engineering campaigns designed to deliver malware.\n\n\"BlueNoroff has operationalised trust abuse by combining compromised industry contacts, social engineering, wallet",
+    "processed": true,
+    "ai_summary": "BlueNoroff threat actors operate a phishing kit impersonating Zoom and Microsoft Teams using typosquatted domains to deliver malware, profiling cryptocurrency wallets before payload delivery through social engineering campaigns.",
+    "classification": [
+      "phishing",
+      "APT",
+      "malware"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [],
+    "mitre_techniques": [
+      "T1566",
+      "T1598",
+      "T1655"
+    ],
+    "apt_groups": [
+      "BlueNoroff"
+    ],
+    "targeted_sectors": [
+      "cryptocurrency",
+      "finance"
+    ],
+    "affected_technologies": [
+      "Zoom",
+      "Microsoft Teams"
+    ],
+    "analysis_created_at": "2026-08-19T13:43:39.527610"
+  },
+  {
+    "article_id": 13263,
+    "title": "New AmnesiaStealer macOS malware hijacks browser sessions via remote control",
+    "link": "https://www.bleepingcomputer.com/news/security/new-amnesiastealer-macos-malware-hijacks-browser-sessions-via-remote-control/",
+    "published": "2026-08-16T16:07:44+01:00",
+    "rss_summary": "A new information-stealing malware called AmnesiaStealer, which targets macOS users via ClickFix attacks, includes a streaming module that allows the attacker to interactively control the victim's web browser. [...]",
+    "processed": true,
+    "ai_summary": "AmnesiaStealer is a new information-stealing malware targeting macOS users through ClickFix attacks, featuring a streaming module that enables remote browser session hijacking and interactive control.",
+    "classification": [
+      "malware",
+      "information-stealer",
+      "spyware"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [
+      "AmnesiaStealer"
+    ],
+    "mitre_techniques": [
+      "T1185",
+      "T1114",
+      "T1557"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "macOS",
+      "web browsers"
+    ],
+    "analysis_created_at": "2026-08-19T13:43:40.982915"
+  },
+  {
+    "article_id": 13258,
+    "title": "French tax authority data breach affects 678,000 individuals",
+    "link": "https://www.bleepingcomputer.com/news/security/french-tax-authority-data-breach-affects-678-000-individuals/",
+    "published": "2026-08-17T11:09:48+01:00",
+    "rss_summary": "The French Ministry of the Economy and Finance has disclosed a data breach after an attacker accessed the General Directorate of Public Finances (DGFiP) systems and stole data belonging to 678,000 individuals. [...]",
+    "processed": true,
+    "ai_summary": "French tax authority (DGFiP) suffered a data breach exposing personal data of 678,000 individuals after unauthorized system access",
+    "classification": [
+      "information-stealer"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [],
+    "mitre_techniques": [
+      "T1005",
+      "T1041"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [
+      "Government",
+      "Finance"
+    ],
+    "affected_technologies": [
+      "General Directorate of Public Finances (DGFiP) systems"
+    ],
+    "analysis_created_at": "2026-08-19T13:46:08.446000"
+  },
+  {
+    "article_id": 13209,
+    "title": "Evooo1Bot Linux Botnet Exploits Known Flaws to Turn Edge Devices Into SOCKS5 Proxies",
+    "link": "https://thehackernews.com/2026/08/evooo1bot-linux-botnet-exploits-known.html",
+    "published": "2026-08-17T10:29:55+01:00",
+    "rss_summary": "Cybersecurity researchers have flagged a previously undocumented Linux botnet family dubbed Evooo1Bot that derives its core functionality from the Mirai botnet source code and is equipped to turn internet-facing devices into SOCKS proxies.\n\n\"While the malware reuses the DDoS engine from the publicly leaked Mirai source code, it extends the original framework with numerous capabilities, including",
+    "processed": true,
+    "ai_summary": "Evooo1Bot is a previously undocumented Linux botnet derived from Mirai source code that compromises internet-facing edge devices and converts them into SOCKS5 proxies with extended capabilities beyond the original DDoS functionality.",
+    "classification": [
+      "botnet",
+      "malware"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [
+      "Evooo1Bot",
+      "Mirai"
+    ],
+    "mitre_techniques": [
+      "T1583.006",
+      "T1190",
+      "T1570"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [],
+    "affected_technologies": [
+      "Linux",
+      "Edge Devices",
+      "SOCKS5 Proxies"
+    ],
+    "analysis_created_at": "2026-08-19T13:43:42.627236"
+  },
+  {
+    "article_id": 13088,
+    "title": "HollowFrame Loader Deploys Matryoshka Backdoor in Spear-Phishing Attack on Law Firm",
+    "link": "https://thehackernews.com/2026/07/hollowframe-loader-deploys-matryoshka.html",
+    "published": "2026-07-31T17:39:31+01:00",
+    "rss_summary": "Cybersecurity researchers have shed light on a previously undocumented Go-based loader framework called HollowFrame and a Rust-based malware family tracked as Matryoshka.\n\nAccording to Blackpoint Cyber, the intrusion sequence begins with a spear-phishing message containing a link to an encrypted archive, which holds a Windows Shortcut (LNK). Executing the file triggers a multi-stage chain that",
+    "processed": true,
+    "ai_summary": "HollowFrame, a Go-based loader framework, deploys Matryoshka, a Rust-based backdoor, through spear-phishing attacks targeting law firms via encrypted archives containing malicious Windows Shortcuts.",
+    "classification": [
+      "malware",
+      "phishing",
+      "trojan"
+    ],
+    "severity": "High",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [
+      "HollowFrame",
+      "Matryoshka"
+    ],
+    "mitre_techniques": [
+      "T1566.002",
+      "T1204.001",
+      "T1547.001",
+      "T1059.003"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [
+      "Legal"
+    ],
+    "affected_technologies": [
+      "Windows",
+      "Go",
+      "Rust"
+    ],
+    "analysis_created_at": "2026-08-19T13:46:02.446786"
+  },
+  {
+    "article_id": 13251,
+    "title": "Hackers Breach Polish Power Plant Controls via Private Cellular Network and Shut Turbine",
+    "link": "https://thehackernews.com/2026/08/hackers-breach-polish-power-plant.html",
+    "published": "2026-08-11T07:55:45+01:00",
+    "rss_summary": "Attackers shut down a steam turbine and the process-water treatment system at a Polish combined heat and power plant by coming in over the private cellular network the local grid operator uses to reach remote equipment.\n\nThe plant supplies heat to roughly 50,000 residents. Recovery began at about 7:30 a.m. while the intruders were still active inside the network, and customers lost neither heat",
+    "processed": true,
+    "ai_summary": "Attackers breached a Polish combined heat and power plant through a private cellular network used by the grid operator to control remote equipment, shutting down a steam turbine and process-water treatment system that supplies heat to approximately 50,000 residents.",
+    "classification": [
+      "APT"
+    ],
+    "severity": "Critical",
+    "confidence_score": 0.85,
+    "iocs": [],
+    "cves": [],
+    "malware": [],
+    "mitre_techniques": [
+      "T1199",
+      "T1190",
+      "T1021"
+    ],
+    "apt_groups": [],
+    "targeted_sectors": [
+      "Energy",
+      "Critical Infrastructure"
+    ],
+    "affected_technologies": [
+      "Private Cellular Network",
+      "SCADA Systems",
+      "Steam Turbine Controls",
+      "Process Water Treatment Systems"
+    ],
+    "analysis_created_at": "2026-08-19T13:46:04.259845"
+  }
+]
