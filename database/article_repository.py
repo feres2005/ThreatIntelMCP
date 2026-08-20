@@ -63,6 +63,102 @@ def get_unprocessed_articles(limit):
     result = connection.execute(query, {"limit": limit})
     return result.fetchall()
 
+def _normalize_article_ids(article_ids):
+  if not isinstance(article_ids, list):
+    raise ValueError(
+      "Article IDs must be provided as a list."
+    )
+
+  unique_article_ids = []
+  seen_article_ids = set()
+
+  for article_id in article_ids:
+    if (
+      not isinstance(article_id, int)
+      or isinstance(article_id, bool)
+      or article_id <= 0
+    ):
+      raise ValueError(
+        "Each article ID must be a positive integer."
+      )
+
+    if article_id not in seen_article_ids:
+      unique_article_ids.append(article_id)
+      seen_article_ids.add(article_id)
+
+  return unique_article_ids
+
+def get_unprocessed_articles_by_ids(article_ids):
+  unique_article_ids = (
+    _normalize_article_ids(article_ids)
+  )
+  if not unique_article_ids:
+    return []
+
+  query = text("""
+    SELECT
+      id,
+      title,
+      link,
+      published,
+      summary
+    FROM articles
+    WHERE processed = FALSE
+      AND id = ANY(
+        CAST(:article_ids AS INTEGER[])
+      )
+    ORDER BY array_position(
+      CAST(:article_ids AS INTEGER[]),
+      id
+    );
+  """)
+
+  with engine.connect() as connection:
+    result = connection.execute(
+      query,
+      {
+        "article_ids": unique_article_ids,
+      },
+    )
+
+    return result.fetchall()
+
+def get_articles_by_ids(article_ids):
+  unique_article_ids = (
+    _normalize_article_ids(article_ids)
+  )
+
+  if not unique_article_ids:
+    return []
+
+  query = text("""
+    SELECT
+      id,
+      title,
+      link,
+      published,
+      summary
+    FROM articles
+    WHERE id = ANY(
+      CAST(:article_ids AS INTEGER[])
+    )
+    ORDER BY array_position(
+      CAST(:article_ids AS INTEGER[]),
+      id
+    );
+  """)
+
+  with engine.connect() as connection:
+    result = connection.execute(
+      query,
+      {
+        "article_ids": unique_article_ids,
+      },
+    )
+
+    return result.fetchall()
+
+
 """ mark an article as processed in the database based on its ID."""
 
 def mark_article_as_processed(article_id):

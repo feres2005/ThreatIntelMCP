@@ -76,6 +76,9 @@ ALLOWED_CLASSIFICATIONS=[
   "DDoS",
   "cloud-attack",
   "mobile-malware",
+  "data-breach",
+  "intrusion",
+  "ICS-attack",
 ]
 
 ALLOWED_SEVERITIES=[
@@ -477,24 +480,48 @@ def build_analysis_prompt(article):
     "affected_technologies": []
   }}
 
-  Rules:
-  - summary: one concise summary of the threat.
-  - classification: Choose one or more values ONLY from the following list:
-  {allowed_classifications}
-  Do not invent new classifications.
-  Do not use synonyms.
-  Do not return any value outside this list.
-  - severity: one of "Critical", "High", "Medium", "Low", or "None".
-  - confidence_score: decimal number between 0.0 and 1.0.
-  - iocs: list of Indicators of Compromise (IPs, domains, URLs, hashes, emails, filenames, registry keys, etc.).
-  - cves: list of CVE identifiers.
-  - malware: list of malware families mentioned.
-  - mitre_techniques: list of MITRE ATT&CK technique IDs (e.g. T1190).
-  - apt_groups: list of APT groups if mentioned.
-  - targeted_sectors: list of affected industries or sectors.
-  - affected_technologies: list of affected software, hardware, vendors or technologies.
+    Rules:
 
-  If a value is not mentioned in the article, return an empty list [] or "None" where appropriate.
+  General evidence rules:
+  - Use only information explicitly supported by the provided title and summary.
+  - Do not invent, assume, or infer named entities, indicators, or attributions that are not supported by the text.
+  - The article may be technology or security news without describing a cyber threat.
+  - A service outage, product update, watermarking feature, support notice, or performance problem is not a cyberattack unless the text explicitly provides evidence of malicious activity.
+  - A data breach is not automatically information-stealer malware. Use "information-stealer" only when the text describes malware or a malicious tool designed to steal information.
+
+  Field rules:
+  - summary: provide one concise factual summary based only on the supplied text.
+  - classification: choose one or more values ONLY from the following list:
+  {allowed_classifications}
+  - Do not invent new classifications, use synonyms, or return values outside this list.
+  - Return an empty classification list when no supported cyber-threat category is present.
+  - Use "data-breach" only when unauthorized access, disclosure, exposure, or theft of data is explicitly described.
+  - Use "intrusion" only when successful unauthorized access to a system or network is explicitly described and no more precise category fully represents the incident.
+  - Use "ICS-attack" only when the supplied text explicitly describes malicious activity affecting industrial control systems, operational technology, industrial equipment, or a physical industrial process.
+  - Use "APT" only when the text explicitly attributes the activity to an APT, a named threat group, or a tracked state-linked actor.
+  - severity: use "Critical", "High", "Medium", "Low", or "None".
+  - Use "None" when no supported malicious cyber activity or exploitable vulnerability is described.
+  - Do not assign threat severity to a normal service outage or benign technology article.
+  - confidence_score: return a decimal number between 0.0 and 1.0 representing how strongly the supplied text supports the extracted fields.
+  - confidence_score measures the strength of the supplied cyber-threat evidence, not confidence that the JSON format is correct.
+  - When classification is [] and severity is "None" because no threat evidence exists, return 0.0.
+  - Use 0.9 or above only when concrete evidence such as an explicit CVE, named threat actor, named malware, literal IOC, or clearly described malicious behavior is present.
+  - Use 0.5 or below when the text is incomplete, ambiguous, or does not provide concrete threat evidence.
+  - iocs: return only literal IPv4 addresses, IPv6 addresses, domains, URLs, MD5 hashes, SHA-1 hashes, or SHA-256 hashes that appear in the supplied text.
+  - Do not treat product names, package names, package versions, CVE IDs, malware names, filenames, general words, or inferred infrastructure as IOCs.
+  - cves: return only literal CVE identifiers present in the supplied text.
+  - malware: return only explicitly named malware families or software that the supplied text explicitly identifies as malicious.
+  - Do not classify legitimate or dual-use tools as malware solely because attackers abused them. When appropriate, place those tools in affected_technologies instead.
+  - Do not place generic descriptions such as "malware", "infostealer", "backdoor", "trojan", or "ransomware" in the malware list unless they are part of an explicitly stated proper name.
+  - When two names are explicitly presented as aliases for the same malware, return only the primary name used by the article.
+  - mitre_techniques: you may map explicitly and unambiguously described behavior to a MITRE ATT&CK technique ID, even when the ID is not written literally in the article.
+  - Do not add a technique when the behavior is only implied or merely associated with the classification, malware, actor, or vulnerability.
+  - apt_groups: return only explicitly named APT or tracked threat groups.
+  - Do not place generic attacker descriptions or ordinary malware/ransomware group labels in apt_groups.
+  - targeted_sectors: return only industries or sectors explicitly identified as targets or victims.
+  - affected_technologies: return only software, hardware, vendors, or technologies explicitly described as affected.
+  - If evidence for a list field is absent, return [].
+
   Return raw JSON only.
   Your response must start with {{ and end with }}.
   Do not wrap the JSON in ```json or ``` code fences
