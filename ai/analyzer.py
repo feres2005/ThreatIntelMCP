@@ -496,9 +496,10 @@ def build_analysis_prompt(article):
   - Do not invent new classifications, use synonyms, or return values outside this list.
   - Return an empty classification list when no supported cyber-threat category is present.
   - Use "data-breach" only when unauthorized access, disclosure, exposure, or theft of data is explicitly described.
-  - Use "intrusion" only when successful unauthorized access to a system or network is explicitly described and no more precise category fully represents the incident.
+  - Use "intrusion" only when successful unauthorized access to a system or network is explicitly described and no more precise category fully   the incident.
   - Use "ICS-attack" only when the supplied text explicitly describes malicious activity affecting industrial control systems, operational technology, industrial equipment, or a physical industrial process.
-  - Use "APT" only when the text explicitly attributes the activity to an APT, a named threat group, or a tracked state-linked actor.
+  - Use "APT" only when the text explicitly describes an advanced persistent threat, a state-sponsored or state-linked actor, or a named actor conducting cyber espionage.
+  - A named ransomware gang, cybercriminal group, malware operation, or generic threat actor is not automatically an APT.
   - severity: use "Critical", "High", "Medium", "Low", or "None".
   - Use "None" when no supported malicious cyber activity or exploitable vulnerability is described.
   - Do not assign threat severity to a normal service outage or benign technology article.
@@ -512,12 +513,20 @@ def build_analysis_prompt(article):
   - cves: return only literal CVE identifiers present in the supplied text.
   - malware: return only explicitly named malware families or software that the supplied text explicitly identifies as malicious.
   - Do not classify legitimate or dual-use tools as malware solely because attackers abused them. When appropriate, place those tools in affected_technologies instead.
-  - Do not place generic descriptions such as "malware", "infostealer", "backdoor", "trojan", or "ransomware" in the malware list unless they are part of an explicitly stated proper name.
+  - Do not place generic descriptions such as "malware", "infostealer", "backdoor", "trojan", or "ransomware" in the malware list unless the text clearly presents them as a formal proper name.
+  - A programming language or platform followed by a generic malware category, such as "Rust infostealer" or "Linux malware", is not a malware-family name unless the text explicitly presents it as one.
   - When two names are explicitly presented as aliases for the same malware, return only the primary name used by the article.
-  - mitre_techniques: you may map explicitly and unambiguously described behavior to a MITRE ATT&CK technique ID, even when the ID is not written literally in the article.
-  - Do not add a technique when the behavior is only implied or merely associated with the classification, malware, actor, or vulnerability.
-  - apt_groups: return only explicitly named APT or tracked threat groups.
-  - Do not place generic attacker descriptions or ordinary malware/ransomware group labels in apt_groups.
+  - mitre_techniques: return a MITRE ATT&CK technique ID only when the supplied text describes a concrete observable behavior that directly and unambiguously matches the technique definition.
+  - Generic statements such as "a vulnerability was exploited", "data was stolen", "a backdoor was deployed", "C2 was used", or "a system was breached" are not sufficient by themselves to assign a specific technique.
+  - Do not assign T1190 unless exploitation of a public-facing or internet-facing application or service is explicitly supported.
+  - Do not assign T1005 merely because data was stolen; collection from a local system, local files, or an equivalent local source must be explicitly supported.
+  - Do not assign T1053 unless a scheduled task, scheduled job, cron job, or equivalent scheduling mechanism is explicitly described.
+  - Do not assign T1199 merely because attackers used an existing, private, or third-party network; abuse of a trusted relationship must be explicitly described.
+  - Do not assign a phishing technique unless phishing behavior is explicitly described.
+  - For ICS techniques, the specific control-system behavior or operational impact required by the technique must be explicitly described.
+  - When more than one technique could fit, return only techniques directly supported by the supplied text. When uncertain, omit the technique.
+  - apt_groups: return only explicitly named groups that the supplied text identifies as APT, state-sponsored, state-linked, or cyber-espionage actors.
+  - Do not place ordinary ransomware gangs, cybercriminal groups, malware operations, generic attacker descriptions, or unnamed state-nexus actors in apt_groups.
   - targeted_sectors: return only industries or sectors explicitly identified as targets or victims.
   - affected_technologies: return only software, hardware, vendors, or technologies explicitly described as affected.
   - If evidence for a list field is absent, return [].

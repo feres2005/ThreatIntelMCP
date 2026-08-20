@@ -146,3 +146,39 @@ En cas d'anomalie, un mécanisme de correction est déclenché. Le modèle reço
 Si certaines anomalies persistent malgré ces tentatives, le système applique automatiquement des valeurs par défaut afin de garantir la cohérence des données produites. L'analyse finale est alors enrichie des informations internes nécessaires, notamment l'identifiant de l'article associé, avant d'être transmise aux modules suivants de la plateforme pour son stockage et son enrichissement.
 
 Cette succession d'étapes permet d'obtenir un processus robuste, capable de produire des données structurées et fiables tout en limitant l'impact des erreurs potentielles du modèle d'intelligence artificielle.
+
+## 4.3.8 Calibrage de l'analyse fondé sur les preuves
+
+Afin de réduire les faux positifs et les entités inventées par le modèle de langage, le prompt d'analyse a été renforcé par un ensemble de règles fondées sur les preuves présentes dans le titre et le résumé de l'article.
+
+Le modèle doit uniquement extraire les informations explicitement soutenues par le texte fourni. Un article décrivant une panne de service, une mise à jour logicielle, une fonctionnalité technique ou un autre événement non malveillant ne doit pas être automatiquement interprété comme une cyberattaque.
+
+La taxonomie de classification a également été complétée par les catégories `data-breach`, `intrusion` et `ICS-attack`. Ces catégories permettent de représenter les violations de données, les accès non autorisés et les attaques affectant les systèmes de contrôle industriel sans forcer le modèle à sélectionner une classification inadaptée.
+
+L'extraction des IoC applique une politique stricte. Seules les adresses IPv4 ou IPv6, les domaines, les URL et les empreintes MD5, SHA-1 ou SHA-256 apparaissant littéralement dans le texte peuvent être retournés. Les noms de produits, de paquets, de projets, de malwares ou de vulnérabilités ne sont pas considérés comme des IoC.
+
+Les règles concernant les malwares et les groupes APT ont également été précisées. Une description générique telle que « infostealer », « backdoor » ou « ransomware » ne constitue pas automatiquement un nom de famille de malware. De même, un groupe de ransomware ou un groupe cybercriminel ne doit pas être enregistré comme groupe APT sans preuve explicite d'un lien étatique, d'une activité d'espionnage ou d'une qualification APT.
+
+Enfin, une technique MITRE ATT&CK ne peut être retournée que lorsqu'un comportement observable décrit dans l'article correspond directement et sans ambiguïté à la définition de la technique. En cas d'incertitude, la technique doit être omise afin de privilégier la précision plutôt que la quantité.
+
+## 4.3.9 Validation sur un ensemble pilote
+
+Un ensemble pilote de quinze articles a été utilisé pour mesurer l'effet des nouvelles règles. Il contient douze articles décrivant des menaces, deux articles de contrôle non malveillants et un cas limite relatif à une violation de données.
+
+Trois versions des résultats ont été conservées :
+
+- une version de référence produite avant le renforcement du prompt ;
+- une première version corrigeant les faux positifs généraux ;
+- une deuxième version ajoutant les règles de précision pour les classifications, les malwares, les groupes APT et les techniques MITRE ATT&CK.
+
+Les deux articles de contrôle ont finalement obtenu une classification vide, une sévérité `None` et un score de confiance de `0.0`. La panne de service Claude, initialement classée avec une sévérité élevée, n'est donc plus interprétée comme une menace.
+
+Le cas limite relatif à la fuite de données de l'administration fiscale française a été classé comme `data-breach` et `intrusion`, sans malware, groupe APT ou technique MITRE non justifiés. L'incident affectant une centrale électrique a reçu les classifications `ICS-attack` et `intrusion`.
+
+Les règles ont également permis de supprimer plusieurs entités insuffisamment justifiées. Le groupe de ransomware Chaos n'est plus enregistré comme groupe APT et l'expression générique « Rust Infostealer » n'est plus considérée comme un nom de famille de malware.
+
+Les quinze articles ont été traités avec succès, sans erreur de pipeline. Trois identifiants CVE littéraux ont été extraits. Aucun IoC typé n'a été produit, car les titres et résumés RSS du corpus pilote ne contenaient pas d'adresse IP, de domaine, d'URL ou d'empreinte exploitable. Ce résultat est considéré comme préférable à la génération de faux indicateurs.
+
+Cette expérimentation montre néanmoins une limite importante : les instructions du prompt ne garantissent pas à elles seules une correspondance parfaite avec MITRE ATT&CK. Certaines techniques peuvent rester discutables lorsque le résumé ne décrit pas suffisamment le comportement observé. Une évolution future pourra associer chaque technique proposée à un extrait justificatif et valider cette correspondance à l'aide des définitions officielles MITRE.
+
+L'extraction du contenu complet des articles constitue également une amélioration future importante. Les résumés RSS sont adaptés à la classification générale, mais contiennent rarement les détails techniques nécessaires à l'extraction d'IoC et de TTP précis.
