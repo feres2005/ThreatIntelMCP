@@ -1,7 +1,9 @@
 from sqlalchemy import text
 import json
-
 from database.connection import engine
+
+MAX_CVE_SEARCH_LIMIT = 50
+MAX_CVE_SEARCH_KEYWORD_LENGTH = 200
 
 def save_cve_enrichment(enriched_cve):
   with engine.connect() as connection:
@@ -53,7 +55,53 @@ def save_cve_enrichment(enriched_cve):
 
 
 #mcp v1.0
-def search_cves(keyword):
+def search_cves(
+    keyword,
+    limit=10,
+    offset=0,
+):
+  if not isinstance(keyword, str):
+    raise ValueError(
+      "CVE search keyword must be a string."
+    )
+
+  normalized_keyword = keyword.strip()
+
+  if not normalized_keyword:
+    raise ValueError(
+      "CVE search keyword cannot be empty."
+    )
+
+  if (
+    len(normalized_keyword)
+    > MAX_CVE_SEARCH_KEYWORD_LENGTH
+  ):
+    raise ValueError(
+      "CVE search keyword cannot exceed "
+      f"{MAX_CVE_SEARCH_KEYWORD_LENGTH} "
+      "characters."
+    )
+
+  if (
+    not isinstance(limit, int)
+    or isinstance(limit, bool)
+    or limit < 1
+    or limit > MAX_CVE_SEARCH_LIMIT
+  ):
+    raise ValueError(
+      "CVE search limit must be an integer "
+      f"between 1 and {MAX_CVE_SEARCH_LIMIT}."
+    )
+
+  if (
+    not isinstance(offset, int)
+    or isinstance(offset, bool)
+    or offset < 0
+  ):
+    raise ValueError(
+      "CVE search offset must be a "
+      "non-negative integer."
+    )
   query=text(
     """
     SELECT
@@ -67,8 +115,11 @@ def search_cves(keyword):
     WHERE cve_id ILIKE :keyword
       OR description ILIKE :keyword
       OR severity ILIKE :keyword
-    ORDER BY published DESC
-    LIMIT 10;
+    ORDER BY
+      published DESC NULLS LAST,
+      cve_id ASC
+    LIMIT :limit
+    OFFSET :offset;
 
 """
   )
@@ -76,7 +127,11 @@ def search_cves(keyword):
   with engine.connect() as connection:
     result=connection.execute(
       query,
-      {"keyword": f"%{keyword}%"}
+      {
+        "keyword": f"%{normalized_keyword}%",
+        "limit": limit,
+        "offset": offset,
+      }
     )
     rows=result.fetchall()
 

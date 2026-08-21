@@ -251,7 +251,56 @@ def get_recent_analysis(limit):
     result = connection.execute(query,{"limit": limit})
     return result.fetchall()
 
-def search_articles(keyword):
+MAX_ARTICLE_SEARCH_LIMIT = 50
+MAX_ARTICLE_SEARCH_KEYWORD_LENGTH = 200
+
+def search_articles(
+    keyword,
+    limit=10,
+    offset=0,
+):
+  if not isinstance(keyword, str):
+    raise ValueError(
+      "Article search keyword must be a string."
+    )
+
+  normalized_keyword = keyword.strip()
+
+  if not normalized_keyword:
+    raise ValueError(
+      "Article search keyword cannot be empty."
+    )
+
+  if (
+    len(normalized_keyword)
+    > MAX_ARTICLE_SEARCH_KEYWORD_LENGTH
+  ):
+    raise ValueError(
+      "Article search keyword cannot exceed "
+      f"{MAX_ARTICLE_SEARCH_KEYWORD_LENGTH} "
+      "characters."
+    )
+
+  if (
+    not isinstance(limit, int)
+    or isinstance(limit, bool)
+    or limit <= 0
+    or limit > MAX_ARTICLE_SEARCH_LIMIT
+  ):
+    raise ValueError(
+      "Article search limit must be an integer "
+      f"between 1 and {MAX_ARTICLE_SEARCH_LIMIT}."
+    )
+
+  if (
+    not isinstance(offset, int)
+    or isinstance(offset, bool)
+    or offset < 0
+  ):
+    raise ValueError(
+      "Article search offset must be a "
+      "non-negative integer."
+    )
   query=text(
     """
     SELECT
@@ -268,14 +317,23 @@ def search_articles(keyword):
       ON articles.id=article_analysis.article_id
     WHERE articles.title ILIKE :keyword
       OR article_analysis.summary ILIKE :keyword
-    ORDER BY articles.published DESC
-      LIMIT 10
+    ORDER BY
+      articles.published DESC NULLS LAST,
+      articles.id DESC
+    LIMIT :limit
+    OFFSET :offset
              
 """)
   with engine.connect() as connection:
     result=connection.execute(
       query,
-      {"keyword":f"%{keyword}%"}
+      {
+        "keyword": (
+          f"%{normalized_keyword}%"
+        ),
+        "limit": limit,
+        "offset": offset,
+      }
     )
     rows=result.fetchall()
   

@@ -1,8 +1,15 @@
 from sqlalchemy import text
 import json
-
 from database.connection import engine
+MAX_GITHUB_ADVISORY_SEARCH_LIMIT = 50
+MAX_GITHUB_ADVISORY_KEYWORD_LENGTH = 200
 
+SUPPORTED_GITHUB_ADVISORY_SEVERITIES = {
+    "low",
+    "moderate",
+    "high",
+    "critical",
+}
 
 def save_github_advisory(advisory):
   with engine.connect() as connection:
@@ -99,10 +106,85 @@ def save_github_advisory(advisory):
     connection.commit()
 
 
-def search_github_advisories(keyword):
-  query=text(
+def search_github_advisories(
+    keyword,
+    limit=10,
+    offset=0,
+    severity=None,
+):
+  if not isinstance(keyword, str):
+    raise ValueError(
+      "GitHub advisory search keyword "
+      "must be a string."
+    )
+
+  normalized_keyword = keyword.strip()
+
+  if not normalized_keyword:
+    raise ValueError(
+      "GitHub advisory search keyword "
+      "cannot be empty."
+    )
+
+  if (
+    len(normalized_keyword)
+    > MAX_GITHUB_ADVISORY_KEYWORD_LENGTH
+  ):
+    raise ValueError(
+      "GitHub advisory search keyword "
+      "cannot exceed "
+      f"{MAX_GITHUB_ADVISORY_KEYWORD_LENGTH} "
+      "characters."
+    )
+
+  if (
+    not isinstance(limit, int)
+    or isinstance(limit, bool)
+    or limit < 1
+    or limit > MAX_GITHUB_ADVISORY_SEARCH_LIMIT
+  ):
+    raise ValueError(
+      "GitHub advisory search limit must "
+      "be an integer between 1 and "
+      f"{MAX_GITHUB_ADVISORY_SEARCH_LIMIT}."
+    )
+
+  if (
+    not isinstance(offset, int)
+    or isinstance(offset, bool)
+    or offset < 0
+  ):
+    raise ValueError(
+      "GitHub advisory search offset must "
+      "be a non-negative integer."
+    )
+
+  normalized_severity = None
+
+  if severity is not None:
+    if not isinstance(severity, str):
+      raise ValueError(
+        "GitHub advisory severity must "
+        "be a string or None."
+      )
+
+    normalized_severity = (
+      severity.strip().lower()
+    )
+
+    if (
+      normalized_severity
+      not in
+      SUPPORTED_GITHUB_ADVISORY_SEVERITIES
+    ):
+      raise ValueError(
+        "Unsupported GitHub advisory "
+        f"severity: {severity!r}."
+      )
+
+  query = text(
     """
-    SELECT 
+    SELECT
       ghsa_id,
       cve_id,
       summary,
@@ -111,52 +193,71 @@ def search_github_advisories(keyword):
       updated_at,
       cvss_v3_score,
       cvss_v4_score
-
     FROM github_advisories
-    WHERE ghsa_id ILIKE :keyword
+    WHERE (
+      ghsa_id ILIKE :keyword
       OR cve_id ILIKE :keyword
       OR summary ILIKE :keyword
       OR severity ILIKE :keyword
-    ORDER BY published_at DESC
-    LIMIT 10;
-  """)
-  with engine.connect() as connection:
-    result= connection.execute(
-      query,
-      {"keyword":f"%{keyword}%"}
     )
-    rows=result.fetchall()
-  advisories=[]
+    AND (
+      :severity IS NULL
+      OR severity = :severity
+    )
+    ORDER BY
+      published_at DESC NULLS LAST,
+      ghsa_id ASC
+    LIMIT :limit
+    OFFSET :offset;
+    """
+  )
+
+  parameters = {
+    "keyword": f"%{normalized_keyword}%",
+    "limit": limit,
+    "offset": offset,
+    "severity": normalized_severity,
+  }
+
+  with engine.connect() as connection:
+    result = connection.execute(
+      query,
+      parameters,
+    )
+
+    rows = result.fetchall()
+
+  advisories = []
 
   for row in rows:
     advisories.append({
-      "ghsa_id":row.ghsa_id,
-      "cve_id":row.cve_id,
-      "summary":row.summary,
-      "severity":row.severity,
-      "published_at":(
+      "ghsa_id": row.ghsa_id,
+      "cve_id": row.cve_id,
+      "summary": row.summary,
+      "severity": row.severity,
+      "published_at": (
         row.published_at.isoformat()
         if row.published_at is not None
         else None
       ),
-      "updated_at":(
+      "updated_at": (
         row.updated_at.isoformat()
         if row.updated_at is not None
         else None
       ),
-      "cvss_v3_score":(
+      "cvss_v3_score": (
         float(row.cvss_v3_score)
         if row.cvss_v3_score is not None
         else None
       ),
-      "cvss_v4_score":(
+      "cvss_v4_score": (
         float(row.cvss_v4_score)
         if row.cvss_v4_score is not None
         else None
-      )
+      ),
     })
-  return advisories
 
+  return advisories
 def get_github_advisory_details(ghsa_id):
     advisory_query = text("""
         SELECT
