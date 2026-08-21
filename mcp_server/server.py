@@ -11,10 +11,7 @@ from database.cve_repository import(
   search_cves as search_cves_db,
 
 )
-
 from enrichment.cve_lookup_service import lookup_cve
-
-
 from database.threat_search import(
   search_malware as search_malware_db,
   search_mitre as search_mitre_db,
@@ -38,8 +35,6 @@ from correlation.article_investigation_service import (
     get_article_investigation as get_article_investigation_service,
 )
 
-mcp = FastMCP("ThreatIntelMCP")
-
 from enrichment.otx_lookup_service import (
     lookup_otx_indicator as lookup_otx_indicator_service,
 )
@@ -54,6 +49,40 @@ from scoring.indicator_scoring_service import (
     score_indicator as score_indicator_service,
 )
 
+from pipeline.ingestion_service import (
+    ingest_rss_articles as ingest_rss_articles_service,
+)
+from pipeline.automation_service import (
+    get_pipeline_status as get_pipeline_status_service,
+    index_pending_embeddings as index_pending_embeddings_service,
+    process_pending_articles as process_pending_articles_service,
+    synchronize_github_intelligence as synchronize_github_intelligence_service,
+    synchronize_mitre_intelligence as synchronize_mitre_intelligence_service,
+)
+
+
+mcp = FastMCP("ThreatIntelMCP")
+
+def _get_confirmation_response(
+    operation,
+    confirm,
+):
+    if not isinstance(confirm, bool):
+        raise ValueError(
+            "confirm must be a boolean."
+        )
+
+    if confirm:
+        return None
+
+    return {
+        "operation": operation,
+        "status": "confirmation_required",
+        "message": (
+            "Explicit confirmation is required "
+            "before this operation can run."
+        ),
+    }
 
 @mcp.tool()
 def ping() -> str:
@@ -280,6 +309,153 @@ def score_threat_indicator(
     return score_indicator_service(
         indicator,
         include_otx=include_otx,
+    )
+@mcp.tool()
+def get_pipeline_status() -> dict:
+    """
+    Return a read-only operational status report
+    for the Threat Intelligence pipeline.
+
+    The result includes article processing,
+    analysis and embedding coverage, pending work,
+    enrichment dataset counts, consistency
+    warnings, and overall health status.
+    """
+    return get_pipeline_status_service()
+
+@mcp.tool()
+def ingest_rss_articles(
+    confirm: bool = False,
+) -> dict:
+    """
+    Collect articles from configured RSS feeds
+    and upsert them into PostgreSQL.
+
+    This operation modifies stored article data.
+    Set confirm to true to execute it. It does not
+    run AI analysis or external enrichment.
+    """
+    confirmation = _get_confirmation_response(
+        "ingest_rss_articles",
+        confirm,
+    )
+
+    if confirmation is not None:
+        return confirmation
+
+    return ingest_rss_articles_service()
+
+@mcp.tool()
+def process_pending_articles(
+    limit: int = 5,
+    include_otx: bool = False,
+    include_cve: bool = False,
+    confirm: bool = False,
+) -> dict:
+    """
+    Process the oldest pending articles using
+    Claude analysis and semantic embeddings.
+
+    The operation writes analysis, IOC and
+    embedding data and marks successful articles
+    as processed. OTX and CVE enrichment are
+    optional. The maximum batch size is enforced
+    by the automation service.
+
+    Set confirm to true to execute it.
+    """
+    confirmation = _get_confirmation_response(
+        "process_pending_articles",
+        confirm,
+    )
+
+    if confirmation is not None:
+        return confirmation
+
+    return process_pending_articles_service(
+        limit=limit,
+        include_otx=include_otx,
+        include_cve=include_cve,
+    )
+
+@mcp.tool()
+def index_pending_embeddings(
+    limit: int = 25,
+    confirm: bool = False,
+) -> dict:
+    """
+    Generate semantic embeddings for articles
+    that do not currently have one.
+
+    The operation writes embedding data and may
+    use the local GPU. It does not call Claude,
+    OTX, NVD, MITRE or GitHub.
+
+    Set confirm to true to execute it.
+    """
+    confirmation = _get_confirmation_response(
+        "index_pending_embeddings",
+        confirm,
+    )
+
+    if confirmation is not None:
+        return confirmation
+
+    return index_pending_embeddings_service(
+        limit=limit
+    )
+
+@mcp.tool()
+def synchronize_mitre_intelligence(
+    domains: list[str] | None = None,
+    confirm: bool = False,
+) -> dict:
+    """
+    Synchronize supported MITRE ATT&CK domains.
+
+    When domains is omitted, enterprise, mobile
+    and ICS ATT&CK are synchronized. The operation
+    downloads official datasets and upserts
+    technique records in PostgreSQL.
+
+    Set confirm to true to execute it.
+    """
+    confirmation = _get_confirmation_response(
+        "synchronize_mitre_intelligence",
+        confirm,
+    )
+
+    if confirmation is not None:
+        return confirmation
+
+    return synchronize_mitre_intelligence_service(
+        domains=domains
+    )
+
+
+@mcp.tool()
+def synchronize_github_intelligence(
+    confirm: bool = False,
+) -> dict:
+    """
+    Incrementally synchronize reviewed GitHub
+    Security Advisories and affected packages.
+
+    The operation calls GitHub and upserts advisory
+    and vulnerability records in PostgreSQL.
+
+    Set confirm to true to execute it.
+    """
+    confirmation = _get_confirmation_response(
+        "synchronize_github_intelligence",
+        confirm,
+    )
+
+    if confirmation is not None:
+        return confirmation
+
+    return (
+        synchronize_github_intelligence_service()
     )
 
 if __name__ == "__main__":

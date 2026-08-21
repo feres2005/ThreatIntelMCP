@@ -181,55 +181,214 @@ def normalize_github_advisory_vulnerabilities(advisory):
     )
   return normalized_vulnerablities
 
-def synchronize_all_github_advisories():
-    
-    after =None
-    batch_number=1
+def synchronize_all_github_advisories(
+    progress_callback=None,
+):
+    if (
+        progress_callback is not None
+        and not callable(progress_callback)
+    ):
+        raise ValueError(
+            "Progress callback must be "
+            "callable or None."
+        )
+
+    after = None
+    batch_number = 1
     per_page = 100
 
-    modified_since=get_latest_github_advisory_updated_at()
+    modified_since = (
+        get_latest_github_advisory_updated_at()
+    )
 
     if modified_since is None:
-           print("starting full  github advisories synchronization")
+        synchronization_mode = "full"
+        modified_since_value = None
+    else:
+        synchronization_mode = "incremental"
+        modified_since_value = (
+            modified_since.isoformat()
+        )
 
-    else :
-           print("starting incremental github advisory synchronization "f"from {modified_since}")
+    batch_count = 0
+    fetched_advisory_count = 0
+    saved_advisory_count = 0
+    saved_vulnerability_count = 0
+    skipped_advisory_count = 0
+    failures = []
+    fetch_failed = False
 
     while True:
-        advisories,next_cursor = fetch_github_advisories_page(
-            after=after,
-            per_page=per_page,
-            modified_since=modified_since
+        advisories, next_cursor = (
+            fetch_github_advisories_page(
+                after=after,
+                per_page=per_page,
+                modified_since=modified_since,
+            )
         )
 
         if advisories is None:
+            fetch_failed = True
+            failures.append({
+                "stage": "fetch",
+                "batch_number": batch_number,
+                "cursor": after,
+                "error": (
+                    "GitHub advisory page fetch "
+                    "failed. Review application "
+                    "logs for details."
+                ),
+            })
             break
-        
+
         if not advisories:
-           break
+            break
 
-        
-        for advisory in advisories:
-            normalized_advisory = normalize_github_advisory(
-                advisory
-            )
+        batch_count += 1
+        fetched_advisory_count += len(
+            advisories
+        )
 
-            normalized_vulnerabilities = (
-                normalize_github_advisory_vulnerabilities(
-                    advisory
+        batch_saved_count = 0
+
+        for position, advisory in enumerate(
+            advisories,
+            start=1,
+        ):
+            if isinstance(advisory, dict):
+                ghsa_id = advisory.get("ghsa_id")
+            else:
+                ghsa_id = None
+
+            try:
+                normalized_advisory = (
+                    normalize_github_advisory(
+                        advisory
+                    )
                 )
+
+                normalized_vulnerabilities = (
+                    normalize_github_advisory_vulnerabilities(
+                        advisory
+                    )
+                )
+            except Exception as error:
+                skipped_advisory_count += 1
+                failures.append({
+                    "stage": "normalization",
+                    "batch_number": batch_number,
+                    "position": position,
+                    "ghsa_id": ghsa_id,
+                    "error": (
+                        f"{type(error).__name__}: "
+                        f"{error}"
+                    ),
+                })
+                continue
+
+            if normalized_advisory is None:
+                skipped_advisory_count += 1
+                failures.append({
+                    "stage": "normalization",
+                    "batch_number": batch_number,
+                    "position": position,
+                    "ghsa_id": ghsa_id,
+                    "error": (
+                        "Advisory normalization "
+                        "returned no result."
+                    ),
+                })
+                continue
+
+            try:
+                save_github_advisory(
+                    normalized_advisory
+                )
+            except Exception as error:
+                failures.append({
+                    "stage": "advisory_save",
+                    "batch_number": batch_number,
+                    "position": position,
+                    "ghsa_id": ghsa_id,
+                    "error": (
+                        f"{type(error).__name__}: "
+                        f"{error}"
+                    ),
+                })
+                continue
+
+            saved_advisory_count += 1
+            batch_saved_count += 1
+
+            try:
+                save_github_advisory_vulnerabilities(
+                    normalized_vulnerabilities
+                )
+            except Exception as error:
+                failures.append({
+                    "stage": "vulnerability_save",
+                    "batch_number": batch_number,
+                    "position": position,
+                    "ghsa_id": ghsa_id,
+                    "error": (
+                        f"{type(error).__name__}: "
+                        f"{error}"
+                    ),
+                })
+                continue
+
+            saved_vulnerability_count += len(
+                normalized_vulnerabilities
             )
 
-            if normalized_advisory is not None:
-                
-                save_github_advisory(normalized_advisory)
+        if progress_callback is not None:
+            progress_callback({
+                "event": "batch_synchronized",
+                "batch_number": batch_number,
+                "advisory_count": len(advisories),
+                "saved_advisory_count": (
+                    batch_saved_count
+                ),
+            })
 
-                save_github_advisory_vulnerabilities(normalized_vulnerabilities)
-
-        print(f"GitHub advisory batch {batch_number} synchronized")
         if next_cursor is None:
-           break
-        after=next_cursor
+            break
+
+        after = next_cursor
         batch_number += 1
+
+    if fetch_failed:
+        status = "failed"
+    elif failures:
+        status = "completed_with_warnings"
+    else:
+        status = "completed"
+
+    return {
+        "operation": (
+            "synchronize_github_advisories"
+        ),
+        "status": status,
+        "synchronization_mode": (
+            synchronization_mode
+        ),
+        "modified_since": modified_since_value,
+        "batch_count": batch_count,
+        "fetched_advisory_count": (
+            fetched_advisory_count
+        ),
+        "saved_advisory_count": (
+            saved_advisory_count
+        ),
+        "saved_vulnerability_count": (
+            saved_vulnerability_count
+        ),
+        "skipped_advisory_count": (
+            skipped_advisory_count
+        ),
+        "failure_count": len(failures),
+        "failures": failures,
+    }
+
 if __name__ == "__main__":
     synchronize_all_github_advisories()

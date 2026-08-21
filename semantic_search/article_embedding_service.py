@@ -65,6 +65,18 @@ def index_missing_articles(limit):
   articles=get_articles_without_embeddings(limit)
   results= []
   for article in articles:
-    result = _index_article_data(article)
+
+    try:
+      result = _index_article_data(article)
+    except Exception as error:
+      result = {
+        "article_id": article.get("article_id"),
+        "status": "failed",
+        "error": (
+          f"{type(error).__name__}: "
+          f"{error}"
+        ),
+      }
+
     results.append(result)
   return results

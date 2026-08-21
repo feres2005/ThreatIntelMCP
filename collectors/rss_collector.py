@@ -1,7 +1,6 @@
 import feedparser
 from datetime import datetime, timezone
 
-print("RSS Collector Started")
 RSS_FEEDS = {
   "https://feeds.feedburner.com/TheHackersNews": "the_hacker_news",
   "https://www.bleepingcomputer.com/feed/": "bleeping_computer",

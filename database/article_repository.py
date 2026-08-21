@@ -17,16 +17,24 @@ def insert_article(article):
       source = COALESCE(
         articles.source,
         EXCLUDED.source
-      );
+      )
+    RETURNING
+      id,
+      (xmax = 0) AS inserted;
     """)
-    connection.execute(query,{
+    result = connection.execute(query,{
       "title":article["title"],  
       "link":article["link"],
       "published":article["published"],
       "summary":article["summary"],
       "source" :article["source"],
     })
+    row = result.mappings().one()
     connection.commit()
+    return {
+      "article_id": row["id"],
+      "inserted": bool(row["inserted"]),
+    }
 
 """ count the total number of articles in the database."""
 

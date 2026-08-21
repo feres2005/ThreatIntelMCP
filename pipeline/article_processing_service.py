@@ -15,6 +15,9 @@ from enrichment.otx_lookup_service import (
 from enrichment.cve_lookup_service import (
     lookup_cve,
 )
+from semantic_search.article_embedding_service import (
+    index_article,
+)
 
 
 def _validate_article_id(article_id):
@@ -414,6 +417,49 @@ def process_article(
                 "One or more CVE lookups failed."
             )
 
+    try:
+        embedding_result = index_article(
+            article_id
+        )
+    except Exception as error:
+        embedding_result = {
+            "article_id": article_id,
+            "status": "failed",
+            "error": (
+                f"{type(error).__name__}: "
+                f"{error}"
+            ),
+        }
+
+        warnings.append(
+            "Article embedding refresh failed."
+        )
+    else:
+        if not isinstance(
+            embedding_result,
+            dict,
+        ):
+            embedding_result = {
+                "article_id": article_id,
+                "status": "failed",
+                "error": (
+                    "Embedding service returned "
+                    "an invalid result."
+                ),
+            }
+
+        if embedding_result.get(
+            "status"
+        ) not in {
+            "created",
+            "updated",
+            "unchanged",
+        }:
+            warnings.append(
+                "Article embedding refresh did "
+                "not complete successfully."
+            )
+
     mark_article_as_processed(article_id)
 
     status = (
@@ -429,7 +475,10 @@ def process_article(
         "ioc_processing": ioc_processing,
         "otx_enrichment": otx_enrichment,
         "cve_enrichment": cve_enrichment,
-        "embedding_status": "deferred",
+        "embedding_status": (
+            embedding_result["status"]
+        ),
+        "embedding_result": embedding_result,
         "marked_processed": True,
         "warnings": warnings,
     }
