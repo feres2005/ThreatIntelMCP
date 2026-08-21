@@ -1,0 +1,20 @@
+[run]
+branch = True
+source = .
+relative_files = True
+omit =
+    venv/*
+    tests/*
+    */venv/*
+    */tests/*
+    test_*.py
+    */test_*.py
+[report]
+fail_under = 80
+precision = 1
+show_missing = True
+skip_empty = True
+sort = Cover
+exclude_also =
+    if TYPE_CHECKING:
+    if __name__ == .__main__.:

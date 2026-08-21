@@ -2,6 +2,7 @@ import logging
 import re
 import json
 import os
+import math
 from dotenv import load_dotenv
 from anthropic import Anthropic
 
@@ -153,13 +154,30 @@ def get_invalid_severity(severity):
     return severity
   return None
 
-def get_invalid_confidence_score(confidence_score):
-  if isinstance(confidence_score,bool):
+def get_invalid_confidence_score(
+  confidence_score,
+):
+  if isinstance(confidence_score, bool):
     return confidence_score
-  if not isinstance(confidence_score,(int,float)):
+
+  if not isinstance(
+    confidence_score,
+    (int, float),
+  ):
     return confidence_score
-  if confidence_score<0.0 or confidence_score>1.0:
+
+  if (
+    isinstance(confidence_score, float)
+    and not math.isfinite(confidence_score)
+  ):
     return confidence_score
+
+  if (
+    confidence_score < 0.0
+    or confidence_score > 1.0
+  ):
+    return confidence_score
+
   return None
 
 def get_invalid_cves(cves):
@@ -199,9 +217,7 @@ def get_validation_errors(analysis_data):
 
 
   errors={}
-  missing_fields=get_missing_fields(analysis_data)
-  if missing_fields:
-    errors["missing_fields"]=missing_fields
+
   invalid_classifications=get_invalid_classifications(
     analysis_data.get("classification",[])
   )

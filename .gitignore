@@ -26,3 +26,11 @@ Thumbs.db
 
 # Runtime automation reports
 automation_logs/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.json
+coverage.xml
+htmlcov/
