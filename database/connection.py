@@ -9,12 +9,15 @@ ENV_FILE = PROJECT_ROOT / ".env"
 
 load_dotenv(
     dotenv_path=ENV_FILE,
-    override=True,
+    override=False,
 )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+)
 
 def test_connection():
 

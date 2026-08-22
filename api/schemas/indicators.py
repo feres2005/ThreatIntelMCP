@@ -12,6 +12,7 @@ from api.schemas.scoring import (
     ConfidenceAssessmentResponse,
     NonEmptyText,
     PriorityResponse,
+    ScoringWarningResponse,
     ThreatAssessmentResponse,
 )
 
@@ -89,4 +90,4 @@ class IndicatorScoringResponse(BaseModel):
     threat: ThreatAssessmentResponse
     confidence: ConfidenceAssessmentResponse
     priority: PriorityResponse
-    warnings: list[str]
+    warnings: list[ScoringWarningResponse]

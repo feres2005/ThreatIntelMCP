@@ -271,3 +271,55 @@ def test_worker_timeout_kills_process(
     ]
     assert process.killed is True
     assert process.communicate_calls == 1
+
+def test_worker_timeout_reaps_real_child_process(
+    monkeypatch,
+):
+    original_create_subprocess = (
+        asyncio.create_subprocess_exec
+    )
+    captured = {}
+
+    async def create_controlled_child(
+        *arguments,
+        **options,
+    ):
+        process = await original_create_subprocess(
+            service.sys.executable,
+            "-c",
+            "import time; time.sleep(60)",
+            cwd=options["cwd"],
+            env=options["env"],
+            stdin=options["stdin"],
+            stdout=options["stdout"],
+            stderr=options["stderr"],
+        )
+        captured["process"] = process
+        return process
+
+    monkeypatch.setattr(
+        service.asyncio,
+        "create_subprocess_exec",
+        create_controlled_child,
+    )
+    monkeypatch.setattr(
+        service,
+        "WORKER_TIMEOUT_SECONDS",
+        0.1,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Semantic search worker timed out.",
+    ):
+        asyncio.run(
+            service.run_semantic_search_worker(
+                "controlled timeout query",
+                3,
+            )
+        )
+
+    process = captured["process"]
+
+    assert process.returncode is not None
+    assert process.returncode != 0

@@ -147,6 +147,39 @@ def test_indicator_scoring_allows_otx_opt_in(
         }
     ]
 
+@pytest.mark.contract
+def test_indicator_scoring_returns_structured_warnings(
+    monkeypatch,
+):
+    structured_warning = {
+        "source": "confidence",
+        "message": (
+            "One or more invalid AI confidence "
+            "values were ignored."
+        ),
+    }
+
+    warning_report = {
+        **CONTROLLED_INDICATOR_SCORE,
+        "warnings": [structured_warning],
+    }
+
+    monkeypatch.setattr(
+        indicators_router,
+        "score_indicator_service",
+        lambda indicator, include_otx: warning_report,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/indicators/score",
+            params={"indicator": "8.8.8.8"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["warnings"] == [
+        structured_warning
+    ]
 
 @pytest.mark.parametrize(
     ("path", "service_attribute"),

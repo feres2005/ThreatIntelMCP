@@ -194,3 +194,36 @@ def test_invalid_article_score_returns_422(
         )
 
     assert response.status_code == 422
+
+@pytest.mark.contract
+def test_article_scoring_returns_structured_warnings(
+    monkeypatch,
+):
+    structured_warning = {
+        "source": "threat",
+        "message": (
+            "Unsupported article severity was "
+            "treated as unknown."
+        ),
+    }
+
+    warning_report = {
+        **CONTROLLED_SCORING_REPORT,
+        "warnings": [structured_warning],
+    }
+
+    monkeypatch.setattr(
+        articles_router,
+        "score_article_service",
+        lambda article_id, include_otx: warning_report,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/articles/4836/score"
+        )
+
+    assert response.status_code == 200
+    assert response.json()["warnings"] == [
+        structured_warning
+    ]

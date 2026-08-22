@@ -77,6 +77,11 @@ class PriorityResponse(BaseModel):
     recommended_action: NonEmptyText
 
 
+class ScoringWarningResponse(BaseModel):
+    source: Literal["threat", "confidence"]
+    message: NonEmptyText
+
+
 class ArticleScoringResponse(BaseModel):
     target: ArticleScoringTarget
     otx_selection: dict[str, Any] | None
@@ -84,4 +89,4 @@ class ArticleScoringResponse(BaseModel):
     threat: ThreatAssessmentResponse
     confidence: ConfidenceAssessmentResponse
     priority: PriorityResponse
-    warnings: list[str]
+    warnings: list[ScoringWarningResponse]
