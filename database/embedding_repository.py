@@ -1,9 +1,10 @@
-
+from datetime import datetime
 import math
 from sqlalchemy import text
 from database.connection import engine
-
+import json
 EMBEDDING_DIMENSIONS = 384
+MAX_TOPIC_MODELING_ARTICLES = 500
 
 def serialize_embedding(embedding):
    if not isinstance(embedding,(list,tuple)):
@@ -16,6 +17,44 @@ def serialize_embedding(embedding):
    ):
       raise ValueError("All elements in the embedding must be finite numbers")
    return "["+",".join(str(value)for value in embedding)+"]"
+
+def _deserialize_stored_embedding(value):
+    error_message = (
+        "Stored embedding must contain exactly "
+        "384 finite numbers."
+    )
+
+    if not isinstance(value, str):
+        raise ValueError(error_message)
+
+    try:
+        embedding = json.loads(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(error_message) from error
+
+    if (
+        not isinstance(embedding, list)
+        or len(embedding) != EMBEDDING_DIMENSIONS
+        or not all(
+            isinstance(item, (int, float))
+            and not isinstance(item, bool)
+            and math.isfinite(item)
+            for item in embedding
+        )
+    ):
+        raise ValueError(error_message)
+
+    return [
+        float(item)
+        for item in embedding
+    ]
+
+
+def _normalize_optional_list(value):
+    if not isinstance(value, list):
+        return []
+
+    return list(value)
 
 def get_articles_without_embeddings(limit):
   if not isinstance(limit, int) or isinstance(limit,bool) or limit<=0:
@@ -205,6 +244,144 @@ def search_article_embeddings(query_embedding, embedding_model, limit):
             ),
             "summary": row.summary,
             "similarity": float(row.similarity),
+        }
+        for row in rows
+    ]
+
+def get_topic_modeling_articles(
+    published_after,
+    embedding_model,
+    limit,
+):
+    if (
+        not isinstance(published_after, datetime)
+        or published_after.tzinfo is None
+        or published_after.utcoffset() is None
+    ):
+        raise ValueError(
+            "Published-after time must be timezone-aware."
+        )
+
+    if (
+        not isinstance(embedding_model, str)
+        or not embedding_model.strip()
+    ):
+        raise ValueError(
+            "Embedding model must be a non-empty string."
+        )
+
+    if (
+        not isinstance(limit, int)
+        or isinstance(limit, bool)
+        or limit <= 0
+        or limit > MAX_TOPIC_MODELING_ARTICLES
+    ):
+        raise ValueError(
+            "Limit must be between 1 and 500."
+        )
+
+    query = text("""
+        SELECT
+            articles.id AS article_id,
+            articles.title,
+            articles.link,
+            articles.source,
+            articles.published,
+            COALESCE(
+                article_analysis.summary,
+                articles.summary
+            ) AS summary,
+            article_analysis.classification,
+            article_analysis.severity,
+            article_analysis.confidence_score,
+            article_analysis.cves,
+            article_analysis.malware,
+            article_analysis.mitre_techniques,
+            article_analysis.apt_groups,
+            article_analysis.targeted_sectors,
+            article_analysis.affected_technologies,
+            CAST(
+                intelligence_embeddings.embedding
+                AS text
+            ) AS embedding_text
+        FROM intelligence_embeddings
+        JOIN articles
+          ON intelligence_embeddings.entity_type = 'article'
+         AND intelligence_embeddings.entity_id
+             = articles.id::text
+        LEFT JOIN article_analysis
+          ON article_analysis.article_id = articles.id
+        WHERE articles.published IS NOT NULL
+          AND articles.published >= :published_after
+          AND articles.published <= CURRENT_TIMESTAMP
+          AND intelligence_embeddings.embedding_model
+              = :embedding_model
+        ORDER BY articles.published DESC,
+                 articles.id DESC
+        LIMIT :limit;
+    """)
+
+    with engine.connect() as connection:
+        result = connection.execute(
+            query,
+            {
+                "published_after": published_after,
+                "embedding_model": (
+                    embedding_model.strip()
+                ),
+                "limit": limit,
+            },
+        )
+        rows = result.fetchall()
+
+    return [
+        {
+            "article_id": row.article_id,
+            "title": row.title,
+            "link": row.link,
+            "source": row.source,
+            "published": row.published,
+            "summary": row.summary,
+            "classification": (
+                _normalize_optional_list(
+                    row.classification
+                )
+            ),
+            "severity": row.severity,
+            "confidence_score": (
+                float(row.confidence_score)
+                if row.confidence_score is not None
+                else None
+            ),
+            "cves": _normalize_optional_list(
+                row.cves
+            ),
+            "malware": _normalize_optional_list(
+                row.malware
+            ),
+            "mitre_techniques": (
+                _normalize_optional_list(
+                    row.mitre_techniques
+                )
+            ),
+            "apt_groups": _normalize_optional_list(
+                row.apt_groups
+            ),
+            "targeted_sectors": (
+                _normalize_optional_list(
+                    row.targeted_sectors
+                )
+            ),
+            "affected_technologies": (
+                _normalize_optional_list(
+                    row.affected_technologies
+                )
+            ),
+            "embedding": (
+                _deserialize_stored_embedding(
+                    row.embedding_text
+                )
+            ),
         }
         for row in rows
     ]

@@ -173,6 +173,16 @@ def test_ping_returns_server_status():
                 "include_otx": False,
             },
         ),
+                (
+            "get_emerging_threat_topics",
+            "detect_emerging_topics_service",
+            (),
+            {
+                "observation_days": 30,
+                "recent_days": 7,
+                "limit": 10,
+            },
+        ),
         (
             "get_pipeline_status",
             "get_pipeline_status_service",
@@ -222,6 +232,7 @@ def test_read_only_tool_delegates_to_service(
         *arguments,
         **keyword_arguments,
     )
+
 
     assert result is expected_result
     assert calls == [

@@ -59,6 +59,9 @@ from pipeline.automation_service import (
     synchronize_github_intelligence as synchronize_github_intelligence_service,
     synchronize_mitre_intelligence as synchronize_mitre_intelligence_service,
 )
+from topic_modeling.emerging_topic_service import (
+    detect_emerging_topics as detect_emerging_topics_service,
+)
 
 
 mcp = FastMCP("ThreatIntelMCP")
@@ -123,6 +126,42 @@ async def semantic_search_threat_articles(
       search_query,
       limit,
     )
+
+@mcp.tool()
+def get_emerging_threat_topics(
+    observation_days: int = 30,
+    recent_days: int = 7,
+    limit: int = 10,
+) -> dict:
+    """
+    Detect recurring and emerging threat topics
+    from recent article embeddings.
+
+    The result includes trend direction,
+    relative article shares, representative
+    articles, sources, CVEs, malware, MITRE
+    techniques, APT groups, sectors, and
+    affected technologies.
+
+    Args:
+        observation_days:
+            Complete observation window,
+            from 2 to 90 days.
+        recent_days:
+            Recent period compared with the
+            earlier observation period,
+            from 1 to 30 days and smaller than
+            observation_days.
+        limit:
+            Maximum number of topics returned,
+            from 1 to 20.
+    """
+    return detect_emerging_topics_service(
+        observation_days=observation_days,
+        recent_days=recent_days,
+        limit=limit,
+    )
+
 @mcp.tool()
 def get_threat_article_details(article_id :int)->dict|None:
   """Return complete intelligence details for a specific article ID."""

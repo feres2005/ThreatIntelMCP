@@ -20,7 +20,9 @@ from api.routers import (
     mitre,
     pipeline_status,
     search,
+    topics,
 )
+
 import logging
 
 from fastapi import (
@@ -80,6 +82,9 @@ def create_app() -> FastAPI:
     )
     application.include_router(
         search.router
+    )
+    application.include_router(
+        topics.router
     )
     application.include_router(
         cves.router
