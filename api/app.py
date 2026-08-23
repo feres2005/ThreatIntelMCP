@@ -21,6 +21,7 @@ from api.routers import (
     pipeline_status,
     search,
     topics,
+    threat_entities,
 )
 
 import logging
@@ -94,6 +95,9 @@ def create_app() -> FastAPI:
     )
     application.include_router(
         github_advisories.router
+    )
+    application.include_router(
+        threat_entities.router
     )
     application.add_exception_handler(
         Exception,

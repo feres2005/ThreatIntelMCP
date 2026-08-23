@@ -7,6 +7,11 @@ from pydantic import (
     Field,
     HttpUrl,
 )
+from api.schemas.articles import (
+    ArticleSeverity,
+    ConfidenceScore,
+    PositiveArticleId,
+)
 
 from api.schemas.cves import CveId
 
@@ -38,9 +43,23 @@ CvssScore = Annotated[
 
 GithubAdvisorySeverity = Literal[
     "low",
-    "moderate",
+    "medium",
     "high",
     "critical",
+]
+GithubAdvisoryEcosystem = Literal[
+    "actions",
+    "composer",
+    "erlang",
+    "go",
+    "maven",
+    "npm",
+    "nuget",
+    "pip",
+    "pub",
+    "rubygems",
+    "rust",
+    "swift",
 ]
 
 GithubAdvisorySearchKeyword = Annotated[
@@ -79,18 +98,18 @@ class GithubAdvisorySearchItemResponse(
     cve_id: CveId | None
     summary: str
     severity: GithubAdvisorySeverity
+    ecosystem: GithubAdvisoryEcosystem | None = None
     published_at: datetime | None
     updated_at: datetime | None
     cvss_v3_score: CvssScore | None
     cvss_v4_score: CvssScore | None
-
 
 class GithubAdvisoryVulnerability(
     BaseModel
 ):
     model_config = ConfigDict(extra="forbid")
 
-    ecosystem: str | None
+    ecosystem: GithubAdvisoryEcosystem | None
     package_name: str | None
     vulnerable_version_range: str | None
     first_patched_version: str | None
@@ -121,7 +140,38 @@ class GithubAdvisorySearchResponse(BaseModel):
     limit: GithubAdvisorySearchLimit
     offset: GithubAdvisorySearchOffset
     severity: GithubAdvisorySeverity | None
+    ecosystem: GithubAdvisoryEcosystem | None
     returned_count: NonNegativeResultCount
     results: list[
         GithubAdvisorySearchItemResponse
+    ]
+
+class GithubSupportingArticleResponse(
+    BaseModel
+):
+    model_config = ConfigDict(extra="forbid")
+
+    article_id: PositiveArticleId
+    title: str
+    link: HttpUrl
+    source: str
+    published: datetime | None
+    severity: ArticleSeverity | None
+    confidence_score: ConfidenceScore | None
+
+
+class GithubAdvisorySupportingArticlesResponse(
+    BaseModel
+):
+    model_config = ConfigDict(extra="forbid")
+
+    ghsa_id: GhsaId
+    cve_id: CveId | None
+    limit: GithubAdvisorySearchLimit
+    supporting_article_count: (
+        NonNegativeResultCount
+    )
+    returned_count: NonNegativeResultCount
+    articles: list[
+        GithubSupportingArticleResponse
     ]

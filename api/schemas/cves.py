@@ -1,13 +1,17 @@
 from datetime import datetime
 from typing import Annotated
-
 from pydantic import (
+    AnyUrl,
     BaseModel,
     ConfigDict,
     Field,
     HttpUrl,
 )
-
+from api.schemas.articles import (
+    ArticleSeverity,
+    ConfidenceScore,
+    PositiveArticleId,
+)
 
 CveId = Annotated[
     str,
@@ -71,7 +75,31 @@ class CveSearchResponse(BaseModel):
     returned_count: NonNegativeResultCount
     results: list[CveSearchItemResponse]
 
-
 class CveDetailResponse(CveSearchItemResponse):
-    reference_links: list[HttpUrl]
+    reference_links: list[AnyUrl]
     enriched_at: datetime | None
+
+class CveSupportingArticleResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    article_id: PositiveArticleId
+    title: str
+    link: HttpUrl
+    source: str
+    published: datetime | None
+    severity: ArticleSeverity | None
+    confidence_score: ConfidenceScore | None
+
+
+class CveSupportingArticlesResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cve_id: CveId
+    limit: CveSearchLimit
+    supporting_article_count: (
+        NonNegativeResultCount
+    )
+    returned_count: NonNegativeResultCount
+    articles: list[
+        CveSupportingArticleResponse
+    ]

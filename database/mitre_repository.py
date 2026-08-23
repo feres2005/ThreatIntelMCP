@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from database.connection import engine
 import json
+import re
 MAX_MITRE_SEARCH_LIMIT = 50
 MAX_MITRE_SEARCH_KEYWORD_LENGTH = 200
 
@@ -9,6 +10,12 @@ SUPPORTED_MITRE_DOMAINS = {
     "mobile-attack",
     "ics-attack",
 }
+MAX_MITRE_SUPPORTING_ARTICLE_LIMIT = 50
+
+MITRE_TECHNIQUE_ID_PATTERN = re.compile(
+    r"^T\d{4}(?:\.\d{3})?$",
+    re.IGNORECASE,
+)
 
 def save_mitre_technique(technique):
   query=text(
@@ -148,6 +155,18 @@ def search_mitre_techniques(
   WHERE (
     technique_id ILIKE :keyword
     OR name ILIKE :keyword
+    OR description ILIKE :keyword
+    OR EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements_text(
+        CASE
+          WHEN jsonb_typeof(platforms) = 'array'
+            THEN platforms
+          ELSE '[]'::jsonb
+        END
+      ) AS platform_name
+      WHERE platform_name ILIKE :keyword
+    )
   )
   AND (
     :domain IS NULL
@@ -216,6 +235,123 @@ def get_mitre_technique_details(technique_id):
        if row is None:
           return None
        return dict(row._mapping)
+
+def get_mitre_supporting_articles(
+    technique_id,
+    limit=20,
+):
+    if not isinstance(technique_id, str):
+        raise ValueError(
+            "MITRE technique ID must be a string."
+        )
+
+    normalized_technique_id = (
+        technique_id.strip().upper()
+    )
+
+    if MITRE_TECHNIQUE_ID_PATTERN.fullmatch(
+        normalized_technique_id
+    ) is None:
+        raise ValueError(
+            "MITRE technique ID must follow "
+            "the format TNNNN or TNNNN.NNN."
+        )
+
+    if (
+        not isinstance(limit, int)
+        or isinstance(limit, bool)
+        or limit < 1
+        or limit
+        > MAX_MITRE_SUPPORTING_ARTICLE_LIMIT
+    ):
+        raise ValueError(
+            "MITRE supporting article limit "
+            "must be between 1 and 50."
+        )
+
+    query = text("""
+        SELECT
+            articles.id AS article_id,
+            articles.title,
+            articles.link,
+            articles.source,
+            articles.published,
+            article_analysis.severity,
+            article_analysis.confidence_score,
+            COUNT(*) OVER()
+                AS supporting_article_count
+        FROM articles
+        JOIN article_analysis
+            ON article_analysis.article_id
+                = articles.id
+        WHERE EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(
+                CASE
+                    WHEN jsonb_typeof(
+                        article_analysis.mitre_techniques
+                    ) = 'array'
+                        THEN article_analysis.mitre_techniques
+                    ELSE '[]'::jsonb
+                END
+            ) AS technique_value
+            WHERE UPPER(technique_value)
+                = :technique_id
+        )
+        ORDER BY
+            articles.published DESC NULLS LAST,
+            articles.id DESC
+        LIMIT :limit;
+    """)
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            query,
+            {
+                "technique_id": (
+                    normalized_technique_id
+                ),
+                "limit": limit,
+            },
+        ).fetchall()
+
+    supporting_article_count = (
+        int(rows[0].supporting_article_count)
+        if rows
+        else 0
+    )
+
+    articles = [
+        {
+            "article_id": row.article_id,
+            "title": row.title,
+            "link": row.link,
+            "source": row.source,
+            "published": (
+                row.published.isoformat()
+                if row.published is not None
+                else None
+            ),
+            "severity": row.severity,
+            "confidence_score": (
+                float(row.confidence_score)
+                if row.confidence_score
+                is not None
+                else None
+            ),
+        }
+        for row in rows
+    ]
+
+    return {
+        "technique_id": (
+            normalized_technique_id
+        ),
+        "supporting_article_count": (
+            supporting_article_count
+        ),
+        "articles": articles,
+    }
 
 
 if __name__ == "__main__":

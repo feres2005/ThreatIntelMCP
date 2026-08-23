@@ -31,6 +31,7 @@ def test_semantic_search_delegates_to_worker(
                     "A ransomware campaign "
                     "targeting organizations."
                 ),
+                "analysis_available": False,
                 "similarity": 0.86,
             }
         ]
@@ -67,6 +68,9 @@ def test_semantic_search_delegates_to_worker(
     assert payload["results"][0][
         "article_id"
     ] == 13250
+    assert payload["results"][0][
+        "analysis_available"
+    ] is False
 
 
 def test_semantic_search_rejects_invalid_input(

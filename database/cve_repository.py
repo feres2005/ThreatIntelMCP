@@ -1,9 +1,16 @@
 from sqlalchemy import text
 import json
 from database.connection import engine
+import re
 
 MAX_CVE_SEARCH_LIMIT = 50
 MAX_CVE_SEARCH_KEYWORD_LENGTH = 200
+MAX_CVE_SUPPORTING_ARTICLE_LIMIT = 50
+
+CVE_ID_PATTERN = re.compile(
+    r"^CVE-\d{4}-\d{4,}$",
+    re.IGNORECASE,
+)
 
 def save_cve_enrichment(enriched_cve):
   with engine.connect() as connection:
@@ -226,3 +233,116 @@ def get_cve_last_enriched_at(cve_id):
       {"cve_id": cve_id},
     )
     return result.scalar_one_or_none()
+
+def get_cve_supporting_articles(
+    cve_id,
+    limit=20,
+):
+    if not isinstance(cve_id, str):
+        raise ValueError(
+            "CVE ID must be a string."
+        )
+
+    normalized_cve_id = (
+        cve_id.strip().upper()
+    )
+
+    if not CVE_ID_PATTERN.fullmatch(
+        normalized_cve_id
+    ):
+        raise ValueError(
+            "CVE ID must follow the format "
+            "CVE-YYYY-NNNN."
+        )
+
+    if (
+        not isinstance(limit, int)
+        or isinstance(limit, bool)
+        or limit < 1
+        or limit
+        > MAX_CVE_SUPPORTING_ARTICLE_LIMIT
+    ):
+        raise ValueError(
+            "Supporting article limit must be "
+            "between 1 and 50."
+        )
+
+    query = text(
+        """
+        SELECT
+            articles.id AS article_id,
+            articles.title,
+            articles.link,
+            articles.source,
+            articles.published,
+            article_analysis.severity,
+            article_analysis.confidence_score,
+            COUNT(*) OVER()
+                AS supporting_article_count
+        FROM articles
+        JOIN article_analysis
+            ON article_analysis.article_id
+                = articles.id
+        WHERE EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(
+                CASE
+                    WHEN jsonb_typeof(article_analysis.cves)
+                      = 'array'
+                    THEN article_analysis.cves
+                    ELSE '[]'::jsonb
+                END
+            ) AS cve_value
+            WHERE UPPER(cve_value) = :cve_id
+        )
+        ORDER BY
+            articles.published DESC NULLS LAST,
+            articles.id DESC
+        LIMIT :limit;
+        """
+    )
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            query,
+            {
+                "cve_id": normalized_cve_id,
+                "limit": limit,
+            },
+        ).fetchall()
+
+    supporting_article_count = (
+        int(rows[0].supporting_article_count)
+        if rows
+        else 0
+    )
+
+    articles = [
+        {
+            "article_id": row.article_id,
+            "title": row.title,
+            "link": row.link,
+            "source": row.source,
+            "published": (
+                row.published.isoformat()
+                if row.published is not None
+                else None
+            ),
+            "severity": row.severity,
+            "confidence_score": (
+                float(row.confidence_score)
+                if row.confidence_score
+                is not None
+                else None
+            ),
+        }
+        for row in rows
+    ]
+
+    return {
+        "cve_id": normalized_cve_id,
+        "supporting_article_count": (
+            supporting_article_count
+        ),
+        "articles": articles,
+    }

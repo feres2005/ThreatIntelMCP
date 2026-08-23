@@ -3,13 +3,61 @@ import json
 from database.connection import engine
 MAX_GITHUB_ADVISORY_SEARCH_LIMIT = 50
 MAX_GITHUB_ADVISORY_KEYWORD_LENGTH = 200
+import json
+import re
+
+from sqlalchemy import text
+
+
+from database.connection import engine
+
+
+MAX_GITHUB_ADVISORY_SEARCH_LIMIT = 50
+MAX_GITHUB_ADVISORY_KEYWORD_LENGTH = 200
+
+GITHUB_ADVISORY_ID_PATTERN = re.compile(
+    (
+        r"^GHSA-[a-z0-9]{4}-"
+        r"[a-z0-9]{4}-[a-z0-9]{4}$"
+    ),
+    re.IGNORECASE,
+)
 
 SUPPORTED_GITHUB_ADVISORY_SEVERITIES = {
     "low",
-    "moderate",
+    "medium",
     "high",
     "critical",
 }
+
+SUPPORTED_GITHUB_ADVISORY_ECOSYSTEMS = {
+    "actions",
+    "composer",
+    "erlang",
+    "go",
+    "maven",
+    "npm",
+    "nuget",
+    "pip",
+    "pub",
+    "rubygems",
+    "rust",
+    "swift",
+}
+
+SUPPORTED_GITHUB_ADVISORY_SEVERITIES = {
+    "low",
+    "medium",
+    "high",
+    "critical",
+}
+GITHUB_ADVISORY_ID_PATTERN = re.compile(
+    (
+        r"^GHSA-[a-z0-9]{4}-"
+        r"[a-z0-9]{4}-[a-z0-9]{4}$"
+    ),
+    re.IGNORECASE,
+)
 
 def save_github_advisory(advisory):
   with engine.connect() as connection:
@@ -111,6 +159,7 @@ def search_github_advisories(
     limit=10,
     offset=0,
     severity=None,
+    ecosystem=None,
 ):
   if not isinstance(keyword, str):
     raise ValueError(
@@ -159,6 +208,29 @@ def search_github_advisories(
       "be a non-negative integer."
     )
 
+  normalized_ecosystem = None
+
+  if ecosystem is not None:
+    if not isinstance(ecosystem, str):
+      raise ValueError(
+        "GitHub advisory ecosystem must "
+        "be a string or None."
+      )
+
+    normalized_ecosystem = (
+      ecosystem.strip().lower()
+    )
+
+    if (
+      normalized_ecosystem
+      not in
+      SUPPORTED_GITHUB_ADVISORY_ECOSYSTEMS
+    ):
+      raise ValueError(
+        "Unsupported GitHub advisory "
+        f"ecosystem: {ecosystem!r}."
+      )
+
   normalized_severity = None
 
   if severity is not None:
@@ -195,14 +267,48 @@ def search_github_advisories(
       cvss_v4_score
     FROM github_advisories
     WHERE (
-      ghsa_id ILIKE :keyword
-      OR cve_id ILIKE :keyword
-      OR summary ILIKE :keyword
-      OR severity ILIKE :keyword
+      github_advisories.ghsa_id
+        ILIKE :keyword
+      OR github_advisories.cve_id
+        ILIKE :keyword
+      OR github_advisories.summary
+        ILIKE :keyword
+      OR github_advisories.description
+        ILIKE :keyword
+      OR github_advisories.severity
+        ILIKE :keyword
+      OR EXISTS (
+        SELECT 1
+        FROM github_advisory_vulnerabilities
+          AS keyword_vulnerability
+        WHERE
+          keyword_vulnerability.ghsa_id
+            = github_advisories.ghsa_id
+          AND (
+            keyword_vulnerability.package_name
+              ILIKE :keyword
+            OR keyword_vulnerability.ecosystem
+              ILIKE :keyword
+          )
+      )
     )
     AND (
       :severity IS NULL
-      OR severity = :severity
+      OR github_advisories.severity
+        = :severity
+    )
+    AND (
+      :ecosystem IS NULL
+      OR EXISTS (
+        SELECT 1
+        FROM github_advisory_vulnerabilities
+          AS ecosystem_vulnerability
+        WHERE
+          ecosystem_vulnerability.ghsa_id
+            = github_advisories.ghsa_id
+          AND ecosystem_vulnerability.ecosystem
+            = :ecosystem
+      )
     )
     ORDER BY
       published_at DESC NULLS LAST,
@@ -217,8 +323,8 @@ def search_github_advisories(
     "limit": limit,
     "offset": offset,
     "severity": normalized_severity,
+    "ecosystem": normalized_ecosystem,
   }
-
   with engine.connect() as connection:
     result = connection.execute(
       query,
@@ -367,6 +473,142 @@ def get_github_advisory_details(ghsa_id):
         })
 
     return advisory
+
+def get_github_advisory_supporting_articles(
+    ghsa_id,
+    limit=20,
+):
+  if not isinstance(ghsa_id, str):
+    raise ValueError(
+      "GitHub advisory ID must be a string."
+    )
+
+  cleaned_ghsa_id = ghsa_id.strip()
+
+  if (
+    GITHUB_ADVISORY_ID_PATTERN.fullmatch(
+      cleaned_ghsa_id
+    )
+    is None
+  ):
+    raise ValueError(
+      "GitHub advisory ID is invalid."
+    )
+
+  normalized_ghsa_id = (
+    "GHSA-"
+    + cleaned_ghsa_id[5:].lower()
+  )
+
+  if (
+    not isinstance(limit, int)
+    or isinstance(limit, bool)
+    or limit < 1
+    or limit > 50
+  ):
+    raise ValueError(
+      "Supporting article limit must be "
+      "between 1 and 50."
+    )
+
+  advisory_query = text("""
+    SELECT cve_id
+    FROM github_advisories
+    WHERE ghsa_id = :ghsa_id;
+  """)
+
+  articles_query = text("""
+    SELECT
+      articles.id AS article_id,
+      articles.title,
+      articles.link,
+      articles.source,
+      articles.published,
+      article_analysis.severity,
+      article_analysis.confidence_score,
+      COUNT(*) OVER()
+        AS supporting_article_count
+    FROM articles
+    JOIN article_analysis
+      ON article_analysis.article_id
+        = articles.id
+    WHERE
+      jsonb_typeof(
+        article_analysis.cves
+      ) = 'array'
+      AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(
+          article_analysis.cves
+        ) AS cve_value
+        WHERE UPPER(cve_value)
+          = :cve_id
+      )
+    ORDER BY
+      articles.published DESC NULLS LAST,
+      articles.id DESC
+    LIMIT :limit;
+  """)
+
+  with engine.connect() as connection:
+    advisory_row = connection.execute(
+      advisory_query,
+      {"ghsa_id": normalized_ghsa_id},
+    ).fetchone()
+
+    if advisory_row is None:
+      return None
+
+    if advisory_row.cve_id is None:
+      rows = []
+    else:
+      rows = connection.execute(
+        articles_query,
+        {
+          "cve_id": (
+            advisory_row.cve_id.upper()
+          ),
+          "limit": limit,
+        },
+      ).fetchall()
+
+  supporting_article_count = (
+    int(rows[0].supporting_article_count)
+    if rows
+    else 0
+  )
+
+  articles = [
+    {
+      "article_id": row.article_id,
+      "title": row.title,
+      "link": row.link,
+      "source": row.source,
+      "published": (
+        row.published.isoformat()
+        if row.published is not None
+        else None
+      ),
+      "severity": row.severity,
+      "confidence_score": (
+        float(row.confidence_score)
+        if row.confidence_score is not None
+        else None
+      ),
+    }
+    for row in rows
+  ]
+
+  return {
+    "ghsa_id": normalized_ghsa_id,
+    "cve_id": advisory_row.cve_id,
+    "limit": limit,
+    "supporting_article_count": (
+      supporting_article_count
+    ),
+    "returned_count": len(articles),
+    "articles": articles,
+  }
 
 def save_github_advisory_vulnerabilities(vulnerabilities):
     if not vulnerabilities:

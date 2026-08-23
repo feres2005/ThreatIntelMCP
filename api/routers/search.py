@@ -21,6 +21,7 @@ router = APIRouter(
 )
 
 
+
 @router.get(
     "/articles/semantic",
     response_model=SemanticArticleSearchResponse,

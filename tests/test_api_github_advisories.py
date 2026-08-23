@@ -16,6 +16,7 @@ def test_github_advisory_search_delegates(
         limit=10,
         offset=0,
         severity=None,
+        ecosystem=None,
     ):
         calls.append(
             (
@@ -23,6 +24,7 @@ def test_github_advisory_search_delegates(
                 limit,
                 offset,
                 severity,
+                ecosystem,
             )
         )
 
@@ -44,6 +46,7 @@ def test_github_advisory_search_delegates(
                 ),
                 "cvss_v3_score": None,
                 "cvss_v4_score": 9.3,
+                "ecosystem": "npm",
             }
         ]
 
@@ -61,6 +64,7 @@ def test_github_advisory_search_delegates(
                 "limit": 2,
                 "offset": 1,
                 "severity": "critical",
+                "ecosystem": "npm",
             },
         )
 
@@ -71,6 +75,7 @@ def test_github_advisory_search_delegates(
             2,
             1,
             "critical",
+            "npm",
         )
     ]
 
@@ -83,6 +88,7 @@ def test_github_advisory_search_delegates(
     assert payload["offset"] == 1
     assert payload["severity"] == "critical"
     assert payload["returned_count"] == 1
+    assert payload["ecosystem"] == "npm"
 
 
 def test_github_advisory_detail_normalizes_id(
@@ -226,6 +232,7 @@ def test_github_advisory_search_validation(
         limit=10,
         offset=0,
         severity=None,
+        ecosystem=None,
     ):
         nonlocal repository_called
         repository_called = True
@@ -257,6 +264,10 @@ def test_github_advisory_search_validation(
             "keyword": "advisory",
             "severity": "unknown",
         },
+        {
+            "keyword": "advisory",
+            "ecosystem": "unknown",
+        },
     ]
 
     with TestClient(app) as client:
@@ -269,3 +280,184 @@ def test_github_advisory_search_validation(
             assert response.status_code == 422
 
     assert repository_called is False
+
+def test_github_advisory_articles_delegate(
+    monkeypatch,
+):
+    calls = []
+
+    def fake_get_supporting_articles(
+        ghsa_id,
+        limit=20,
+    ):
+        calls.append((ghsa_id, limit))
+
+        return {
+            "ghsa_id": "GHSA-v667-gc2r-2xm7",
+            "cve_id": "CVE-2026-55445",
+            "limit": 5,
+            "supporting_article_count": 1,
+            "returned_count": 1,
+            "articles": [
+                {
+                    "article_id": 13310,
+                    "title": (
+                        "Critical vulnerability"
+                    ),
+                    "link": (
+                        "https://example.com/article"
+                    ),
+                    "source": "the_hacker_news",
+                    "published": None,
+                    "severity": "Critical",
+                    "confidence_score": 0.92,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        github_router,
+        (
+            "get_github_advisory_"
+            "supporting_articles"
+        ),
+        fake_get_supporting_articles,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            (
+                "/api/v1/github/advisories/"
+                "GHSA-V667-GC2R-2XM7/articles"
+            ),
+            params={"limit": 5},
+        )
+
+    assert response.status_code == 200
+    assert calls == [
+        ("GHSA-v667-gc2r-2xm7", 5)
+    ]
+    assert response.json()[
+        "supporting_article_count"
+    ] == 1
+
+
+def test_github_advisory_articles_missing(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        github_router,
+        (
+            "get_github_advisory_"
+            "supporting_articles"
+        ),
+        lambda ghsa_id, limit=20: None,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            (
+                "/api/v1/github/advisories/"
+                "GHSA-9999-9999-9999/articles"
+            )
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": (
+            "GitHub advisory "
+            "GHSA-9999-9999-9999 "
+            "was not found."
+        )
+    }
+
+
+def test_github_advisory_articles_maps_validation(
+    monkeypatch,
+):
+    def fake_get_supporting_articles(
+        ghsa_id,
+        limit=20,
+    ):
+        raise ValueError(
+            "Supporting article limit is invalid."
+        )
+
+    monkeypatch.setattr(
+        github_router,
+        (
+            "get_github_advisory_"
+            "supporting_articles"
+        ),
+        fake_get_supporting_articles,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            (
+                "/api/v1/github/advisories/"
+                "GHSA-v667-gc2r-2xm7/articles"
+            )
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "Supporting article limit is invalid."
+        )
+    }
+
+
+
+def test_github_advisory_search_serializes_medium_severity(
+    monkeypatch,
+):
+    def fake_search(
+        keyword,
+        limit=10,
+        offset=0,
+        severity=None,
+        ecosystem=None,
+    ):
+        return [
+            {
+                "ghsa_id": (
+                    "GHSA-f5x3-32g6-xq36"
+                ),
+                "cve_id": "CVE-2024-28863",
+                "summary": (
+                    "Denial of service while "
+                    "parsing a tar file."
+                ),
+                "severity": "medium",
+                "ecosystem": "npm",
+                "published_at": (
+                    "2024-03-22T16:57:05"
+                ),
+                "updated_at": (
+                    "2024-06-10T18:30:53"
+                ),
+                "cvss_v3_score": 6.5,
+                "cvss_v4_score": 0.0,
+            }
+        ]
+
+    monkeypatch.setattr(
+        github_router,
+        "search_github_advisories",
+        fake_search,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/github/advisories",
+            params={
+                "keyword": "AMR",
+                "ecosystem": "npm",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0][
+        "severity"
+    ] == "medium"

@@ -89,7 +89,11 @@ def test_cve_detail_delegates_to_lookup(
                 "2026-07-09T01:19:06"
             ),
             "reference_links": [
-                "https://example.com/advisory"
+                "https://example.com/advisory",
+                (
+                    "ftp://patches.example.com/"
+                    "security/advisory.txt"
+                ),
             ],
             "enriched_at": (
                 "2026-07-16T11:48:52"
@@ -112,6 +116,15 @@ def test_cve_detail_delegates_to_lookup(
     assert response.json()["cve_id"] == (
         "CVE-2026-46242"
     )
+    assert response.json()[
+        "reference_links"
+    ] == [
+        "https://example.com/advisory",
+        (
+            "ftp://patches.example.com/"
+            "security/advisory.txt"
+        ),
+    ]
 
 
 def test_cve_detail_maps_invalid_and_missing(
@@ -207,3 +220,149 @@ def test_cve_search_rejects_invalid_query(
             assert response.status_code == 422
 
     assert repository_called is False
+
+def test_cve_supporting_articles_delegates_to_repository(
+    monkeypatch,
+):
+    calls = []
+
+    def fake_get_cve_supporting_articles(
+        cve_id,
+        limit=20,
+    ):
+        calls.append((cve_id, limit))
+
+        return {
+            "cve_id": "CVE-2026-50522",
+            "supporting_article_count": 2,
+            "articles": [
+                {
+                    "article_id": 501,
+                    "title": (
+                        "Critical package vulnerability"
+                    ),
+                    "link": (
+                        "https://example.com/article-501"
+                    ),
+                    "source": "example_feed",
+                    "published": (
+                        "2026-08-20T14:30:00+00:00"
+                    ),
+                    "severity": "Critical",
+                    "confidence_score": 0.91,
+                },
+            ],
+        }
+
+    monkeypatch.setattr(
+        cve_router,
+        "get_cve_supporting_articles",
+        fake_get_cve_supporting_articles,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            (
+                "/api/v1/cves/"
+                "cve-2026-50522/articles"
+            ),
+            params={"limit": 1},
+        )
+
+    assert response.status_code == 200
+    assert calls == [
+        ("cve-2026-50522", 1)
+    ]
+
+    assert response.json() == {
+        "cve_id": "CVE-2026-50522",
+        "limit": 1,
+        "supporting_article_count": 2,
+        "returned_count": 1,
+        "articles": [
+            {
+                "article_id": 501,
+                "title": (
+                    "Critical package vulnerability"
+                ),
+                "link": (
+                    "https://example.com/article-501"
+                ),
+                "source": "example_feed",
+                "published": (
+                    "2026-08-20T14:30:00Z"
+                ),
+                "severity": "Critical",
+                "confidence_score": 0.91,
+            },
+        ],
+    }
+
+
+def test_cve_supporting_articles_returns_empty_evidence(
+    monkeypatch,
+):
+    def fake_get_cve_supporting_articles(
+        cve_id,
+        limit=20,
+    ):
+        return {
+            "cve_id": cve_id.strip().upper(),
+            "supporting_article_count": 0,
+            "articles": [],
+        }
+
+    monkeypatch.setattr(
+        cve_router,
+        "get_cve_supporting_articles",
+        fake_get_cve_supporting_articles,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            (
+                "/api/v1/cves/"
+                "CVE-2099-99999/articles"
+            )
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "cve_id": "CVE-2099-99999",
+        "limit": 20,
+        "supporting_article_count": 0,
+        "returned_count": 0,
+        "articles": [],
+    }
+
+
+def test_cve_supporting_articles_maps_repository_validation(
+    monkeypatch,
+):
+    def fake_get_cve_supporting_articles(
+        cve_id,
+        limit=20,
+    ):
+        raise ValueError(
+            "CVE ID must follow the format "
+            "CVE-YYYY-NNNN."
+        )
+
+    monkeypatch.setattr(
+        cve_router,
+        "get_cve_supporting_articles",
+        fake_get_cve_supporting_articles,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/cves/invalid-cve-id/articles"
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "CVE ID must follow the format "
+            "CVE-YYYY-NNNN."
+        )
+    }

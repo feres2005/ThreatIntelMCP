@@ -8,12 +8,14 @@ from fastapi import (
     Query,
     status,
 )
-
 from api.schemas.cves import (
     CveDetailResponse,
     CveSearchResponse,
+    CveSupportingArticlesResponse,
 )
+
 from database.cve_repository import (
+    get_cve_supporting_articles,
     search_cves,
 )
 from enrichment.cve_lookup_service import (
@@ -115,3 +117,50 @@ async def get_cve_intelligence(
         )
 
     return result
+
+@router.get(
+    "/{cve_id}/articles",
+    response_model=CveSupportingArticlesResponse,
+    summary="Get articles supporting a CVE",
+)
+async def get_cve_article_evidence(
+    cve_id: Annotated[
+        str,
+        Path(
+            min_length=13,
+            max_length=40,
+            description=(
+                "CVE identifier such as "
+                "CVE-2026-50522."
+            ),
+        ),
+    ],
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=50,
+        ),
+    ] = 20,
+):
+    try:
+        result = await asyncio.to_thread(
+            get_cve_supporting_articles,
+            cve_id,
+            limit,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+            detail=str(error),
+        ) from error
+
+    return {
+        **result,
+        "limit": limit,
+        "returned_count": len(
+            result["articles"]
+        ),
+    }

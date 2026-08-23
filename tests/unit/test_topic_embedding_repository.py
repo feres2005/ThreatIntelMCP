@@ -277,3 +277,60 @@ def test_deserialize_stored_embedding_rejects_corruption(
         "Stored embedding must contain exactly "
         "384 finite numbers."
     )
+def test_search_article_embeddings_reports_analysis_availability(
+    monkeypatch,
+):
+    published = datetime(
+        2026,
+        8,
+        22,
+        12,
+        30,
+        tzinfo=timezone.utc,
+    )
+
+    row = SimpleNamespace(
+        article_id=2563,
+        title="Embedded article without analysis",
+        link="https://example.com/article-2563",
+        source="the_hacker_news",
+        published=published,
+        summary="Raw RSS summary.",
+        similarity=0.871,
+        analysis_available=False,
+    )
+
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.execute.return_value.fetchall.return_value = [
+        row,
+    ]
+
+    fake_engine = MagicMock()
+    fake_engine.connect.return_value = connection
+
+    monkeypatch.setattr(
+        repository,
+        "engine",
+        fake_engine,
+    )
+
+    result = repository.search_article_embeddings(
+        query_embedding=[0.0] * 384,
+        embedding_model="test-model",
+        limit=5,
+    )
+
+    assert result[0]["analysis_available"] is False
+
+    query = connection.execute.call_args.args[0]
+    normalized_sql = " ".join(str(query).split())
+
+    assert (
+        "article_analysis.article_id IS NOT NULL"
+        in normalized_sql
+    )
+    assert (
+        "AS analysis_available"
+        in normalized_sql
+    )

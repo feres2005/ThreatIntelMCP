@@ -7,7 +7,11 @@ from pydantic import (
     Field,
     HttpUrl,
 )
-
+from api.schemas.articles import (
+    ArticleSeverity,
+    ConfidenceScore,
+    PositiveArticleId,
+)
 
 MitreTechniqueId = Annotated[
     str,
@@ -100,3 +104,28 @@ class MitreSearchResponse(BaseModel):
     include_inactive: bool
     returned_count: NonNegativeResultCount
     results: list[MitreSearchItemResponse]
+
+class MitreSupportingArticleResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    article_id: PositiveArticleId
+    title: str
+    link: HttpUrl
+    source: str
+    published: datetime | None
+    severity: ArticleSeverity | None
+    confidence_score: ConfidenceScore | None
+
+
+class MitreSupportingArticlesResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    technique_id: MitreTechniqueId
+    limit: MitreSearchLimit
+    supporting_article_count: (
+        NonNegativeResultCount
+    )
+    returned_count: NonNegativeResultCount
+    articles: list[
+        MitreSupportingArticleResponse
+    ]

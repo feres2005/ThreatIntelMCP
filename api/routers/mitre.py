@@ -13,8 +13,10 @@ from api.schemas.mitre import (
     MitreDomain,
     MitreSearchResponse,
     MitreTechniqueDetailResponse,
+    MitreSupportingArticlesResponse,
 )
 from database.mitre_repository import (
+    get_mitre_supporting_articles,
     get_mitre_technique_details,
     search_mitre_techniques,
 )
@@ -39,8 +41,8 @@ def search_mitre_intelligence(
             max_length=200,
             pattern=r"\S",
             description=(
-                "Technique identifier or "
-                "technique name."
+                "Technique identifier, name, "
+                "description, or platform."
             ),
         ),
     ],
@@ -94,6 +96,66 @@ def search_mitre_intelligence(
         "include_inactive": include_inactive,
     }
 
+@router.get(
+    "/techniques/{technique_id}/articles",
+    response_model=(
+        MitreSupportingArticlesResponse
+    ),
+    summary=(
+        "Get articles supporting a "
+        "MITRE technique"
+    ),
+)
+def get_mitre_article_evidence(
+    technique_id: Annotated[
+        str,
+        Path(
+            min_length=1,
+            max_length=20,
+            description=(
+                "Technique ID such as T1566 "
+                "or T1566.002."
+            ),
+        ),
+    ],
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=50,
+        ),
+    ] = 20,
+):
+    try:
+        evidence = (
+            get_mitre_supporting_articles(
+                technique_id,
+                limit=limit,
+            )
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+            detail=str(error),
+        ) from error
+
+    articles = evidence["articles"]
+
+    return {
+        "technique_id": (
+            evidence["technique_id"]
+        ),
+        "limit": limit,
+        "supporting_article_count": (
+            evidence[
+                "supporting_article_count"
+            ]
+        ),
+        "returned_count": len(articles),
+        "articles": articles,
+    }
 
 @router.get(
     "/techniques/{technique_id}",

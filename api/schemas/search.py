@@ -52,6 +52,7 @@ class SemanticArticleSearchResult(BaseModel):
     source: str | None
     published: datetime | None
     summary: str | None
+    analysis_available: bool
     similarity: SimilarityScore
 
 

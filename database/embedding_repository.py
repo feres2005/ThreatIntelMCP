@@ -202,6 +202,9 @@ def search_article_embeddings(query_embedding, embedding_model, limit):
                 article_analysis.summary,
                 articles.summary
             ) AS summary,
+            (
+                article_analysis.article_id IS NOT NULL
+            ) AS analysis_available,
             1 - (
                 intelligence_embeddings.embedding
                 <=> CAST(:query_embedding AS vector)
@@ -243,6 +246,9 @@ def search_article_embeddings(query_embedding, embedding_model, limit):
                 else None
             ),
             "summary": row.summary,
+            "analysis_available": bool(
+                row.analysis_available
+            ),
             "similarity": float(row.similarity),
         }
         for row in rows
