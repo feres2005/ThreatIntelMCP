@@ -70,9 +70,30 @@ def test_search_includes_packages_and_ecosystem(
         "= :ecosystem"
         in normalized_sql
     )
+
+    assert (
+        "WHEN UPPER( "
+        "github_advisories.ghsa_id "
+        ") = UPPER(:exact_keyword) "
+        "THEN 0"
+        in normalized_sql
+    )
+    assert (
+        "WHEN UPPER( "
+        "github_advisories.cve_id "
+        ") = UPPER(:exact_keyword) "
+        "THEN 1"
+        in normalized_sql
+    )
+
+    assert parameters["keyword"] == (
+        "%@whyour/qinglong%"
+    )
+    assert parameters["exact_keyword"] == (
+        "@whyour/qinglong"
+    )
     assert parameters["ecosystem"] == "npm"
     assert parameters["severity"] == "critical"
-
 
 @pytest.mark.parametrize(
     "ecosystem",

@@ -47,6 +47,16 @@ def test_ping_returns_server_status():
             {},
         ),
         (
+            "get_cve_supporting_articles",
+            "get_cve_supporting_articles_db",
+            (
+                "CVE-2026-50522",
+            ),
+            {
+                "limit": 7,
+            },
+        ),
+        (
             "search_malware",
             "search_malware_db",
             (
@@ -106,6 +116,19 @@ def test_ping_returns_server_status():
             {},
         ),
         (
+            (
+                "get_github_advisory_"
+                "supporting_articles"
+            ),
+            "get_ghsa_supporting_articles_db",
+            (
+                "GHSA-v667-gc2r-2xm7",
+            ),
+            {
+                "limit": 8,
+            },
+        ),
+        (
             "search_mitre_techniques",
             "search_mitre_techniques_db",
             (
@@ -120,6 +143,19 @@ def test_ping_returns_server_status():
                 "T1566",
             ),
             {},
+        ),
+        (
+            (
+                "get_mitre_technique_"
+                "supporting_articles"
+            ),
+            "get_mitre_supporting_articles_db",
+            (
+                "T1566.002",
+            ),
+            {
+                "limit": 9,
+            },
         ),
         (
             "lookup_otx_indicator",

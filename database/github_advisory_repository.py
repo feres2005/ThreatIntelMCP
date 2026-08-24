@@ -311,20 +311,32 @@ def search_github_advisories(
       )
     )
     ORDER BY
+      CASE
+        WHEN UPPER(
+          github_advisories.ghsa_id
+        ) = UPPER(:exact_keyword)
+          THEN 0
+        WHEN UPPER(
+          github_advisories.cve_id
+        ) = UPPER(:exact_keyword)
+          THEN 1
+        ELSE 2
+      END ASC,
       published_at DESC NULLS LAST,
       ghsa_id ASC
     LIMIT :limit
     OFFSET :offset;
     """
   )
-
   parameters = {
     "keyword": f"%{normalized_keyword}%",
+    "exact_keyword": normalized_keyword,
     "limit": limit,
     "offset": offset,
     "severity": normalized_severity,
     "ecosystem": normalized_ecosystem,
   }
+
   with engine.connect() as connection:
     result = connection.execute(
       query,

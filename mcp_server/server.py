@@ -10,10 +10,9 @@ from database.article_repository import (
   search_articles,
   get_article_details
 )
-
-from database.cve_repository import(
+from database.cve_repository import (
+  get_cve_supporting_articles as get_cve_supporting_articles_db,
   search_cves as search_cves_db,
-
 )
 from enrichment.cve_lookup_service import lookup_cve
 from database.threat_search import(
@@ -23,13 +22,15 @@ from database.threat_search import(
   search_targeted_sectors as search_targeted_sectors_db,
   search_affected_technologies as search_affected_technologies_db
 )
-from database.github_advisory_repository import(
+from database.github_advisory_repository import (
+  get_github_advisory_details as get_github_advisory_details_db,
+  get_github_advisory_supporting_articles as get_ghsa_supporting_articles_db,
   search_github_advisories as search_github_advisories_db,
-  get_github_advisory_details as get_github_advisory_details_db
 )
 from database.mitre_repository import (
-    search_mitre_techniques as search_mitre_techniques_db,
-    get_mitre_technique_details as get_mitre_technique_details_db,
+  get_mitre_supporting_articles as get_mitre_supporting_articles_db,
+  get_mitre_technique_details as get_mitre_technique_details_db,
+  search_mitre_techniques as search_mitre_techniques_db,
 )
 from semantic_search.subprocess_service import (
   run_semantic_search_worker,
@@ -193,6 +194,24 @@ async def get_cve_details(cve_id: str) -> dict | None:
     lookup_cve,
     cve_id,
   )
+
+@mcp.tool()
+def get_cve_supporting_articles(
+  cve_id: str,
+  limit: int = 20,
+) -> dict | None:
+  """
+  Return locally stored articles mentioning an
+  exact CVE identifier.
+
+  This tool returns local article evidence and
+  does not call NVD.
+  """
+  return get_cve_supporting_articles_db(
+    cve_id,
+    limit=limit,
+  )
+
 @mcp.tool()
 def search_malware(keyword: str)->list:
   """search articles mentioning a malware family"""
@@ -230,7 +249,24 @@ def search_github_advisories(keyword:str)->list:
 def get_github_advisory_details(ghsa_id: str) -> dict | None:
     """Retrieve complete details for one GitHub Security Advisory by GHSA ID."""
     return get_github_advisory_details_db(ghsa_id)
+@mcp.tool()
+def get_github_advisory_supporting_articles(
+  ghsa_id: str,
+  limit: int = 20,
+) -> dict | None:
+  """
+  Return locally stored articles associated with
+  a GitHub Security Advisory.
 
+  Local evidence is correlated through the CVE
+  associated with the advisory.
+  """
+  return (
+    get_ghsa_supporting_articles_db(
+      ghsa_id,
+      limit=limit,
+    )
+  )
 @mcp.tool()
 def search_mitre_techniques(keyword:str):
    """
@@ -259,7 +295,22 @@ def get_mitre_technique_details(
     return get_mitre_technique_details_db(
         technique_id
     )
+@mcp.tool()
+def get_mitre_technique_supporting_articles(
+  technique_id: str,
+  limit: int = 20,
+) -> dict | None:
+  """
+  Return locally stored articles mentioning an
+  exact MITRE ATT&CK technique identifier.
 
+  This tool searches stored article analysis and
+  does not contact MITRE.
+  """
+  return get_mitre_supporting_articles_db(
+    technique_id,
+    limit=limit,
+  )
 
 @mcp.tool()
 def lookup_otx_indicator(
