@@ -10,6 +10,11 @@ WORKER_TIMEOUT_SECONDS = 120
 
 
 async def run_semantic_search_worker(search_query, limit):
+  # TODO(POST-PFE-006): Build a minimal worker
+  # environment that retains DATABASE_URL while
+  # excluding unrelated external API credentials.
+  # This is deferred because the current worker is
+  # trusted, local, and invoked without a shell.
   environment = os.environ.copy()
   environment["PYTHONIOENCODING"] = "utf-8"
   environment["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
