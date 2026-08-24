@@ -1,3 +1,5 @@
+import logging
+from time import perf_counter
 from pipeline.ingestion_service import (
     ingest_rss_articles,
 )
@@ -8,6 +10,9 @@ from pipeline.automation_service import (
     index_pending_embeddings,
     process_pending_articles,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _validate_limit(value, maximum, label):
@@ -27,9 +32,29 @@ def _validate_limit(value, maximum, label):
 
 
 def _run_cycle_step(operation, function):
+    started_at = perf_counter()
+
+    logger.info(
+        "Automation step started: %s",
+        operation,
+    )
+
     try:
-        return function()
+        result = function()
     except Exception as error:
+        duration_seconds = (
+            perf_counter() - started_at
+        )
+
+        logger.exception(
+            (
+                "Automation step failed: %s "
+                "after %.3f seconds"
+            ),
+            operation,
+            duration_seconds,
+        )
+
         return {
             "operation": operation,
             "status": "failed",
@@ -39,6 +64,29 @@ def _run_cycle_step(operation, function):
             ),
         }
 
+    duration_seconds = (
+        perf_counter() - started_at
+    )
+
+    if isinstance(result, dict):
+        result_status = result.get(
+            "status",
+            "not_reported",
+        )
+    else:
+        result_status = "not_reported"
+
+    logger.info(
+        (
+            "Automation step finished: %s "
+            "with status %s in %.3f seconds"
+        ),
+        operation,
+        result_status,
+        duration_seconds,
+    )
+
+    return result
 
 def _step_has_problem(result):
     if result.get("status") in {

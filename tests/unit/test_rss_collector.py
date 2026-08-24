@@ -113,6 +113,16 @@ def test_collect_articles_handles_empty_feed_configuration(
         "parse",
         unexpected_parse,
     )
+    def unexpected_get(*args, **kwargs):
+        raise AssertionError(
+            "No feed should be downloaded."
+        )
+
+    monkeypatch.setattr(
+        service.requests,
+        "get",
+        unexpected_get,
+    )
 
     assert service.collect_articles() == []
 
@@ -190,10 +200,37 @@ def test_collect_articles_normalizes_multiple_feeds(
         ),
     }
 
-    calls = []
+    request_calls = []
+    status_checks = []
+    parse_calls = []
 
-    def fake_parse(feed_url):
-        calls.append(feed_url)
+    def fake_get(
+        feed_url,
+        headers,
+        timeout,
+    ):
+        request_calls.append(
+            (
+                feed_url,
+                headers,
+                timeout,
+            )
+        )
+
+        def raise_for_status():
+            status_checks.append(feed_url)
+
+        return SimpleNamespace(
+            content=feed_url.encode("utf-8"),
+            raise_for_status=raise_for_status,
+        )
+
+    def fake_parse(feed_content):
+        feed_url = feed_content.decode(
+            "utf-8"
+        )
+        parse_calls.append(feed_url)
+
         return parsed_feeds[feed_url]
 
     monkeypatch.setattr(
@@ -201,6 +238,13 @@ def test_collect_articles_normalizes_multiple_feeds(
         "RSS_FEEDS",
         feeds,
     )
+
+    monkeypatch.setattr(
+        service.requests,
+        "get",
+        fake_get,
+    )
+
     monkeypatch.setattr(
         service.feedparser,
         "parse",
@@ -209,7 +253,16 @@ def test_collect_articles_normalizes_multiple_feeds(
 
     result = service.collect_articles()
 
-    assert calls == list(feeds)
+    assert request_calls == [
+        (
+            feed_url,
+            service.RSS_REQUEST_HEADERS,
+            service.RSS_REQUEST_TIMEOUT_SECONDS,
+        )
+        for feed_url in feeds
+    ]
+    assert status_checks == list(feeds)
+    assert parse_calls == list(feeds)
 
     assert result == [
         {
@@ -251,4 +304,64 @@ def test_collect_articles_normalizes_multiple_feeds(
             "summary": "",
             "source": "source_two",
         },
+    ]
+
+def test_collect_articles_uses_bounded_http_timeout(
+    monkeypatch,
+):
+    feed_url = "https://feed.example/timeout"
+
+    monkeypatch.setattr(
+        service,
+        "RSS_FEEDS",
+        {
+            feed_url: "timeout_source",
+        },
+    )
+
+    request_calls = []
+    def failing_get(
+        url,
+        headers,
+        timeout,
+    ):
+        request_calls.append(
+            (
+                url,
+                headers,
+                timeout,
+            )
+        )
+        raise service.requests.Timeout(
+            "Controlled RSS timeout."
+        )
+
+    def unexpected_parse(*args, **kwargs):
+        raise AssertionError(
+            "A failed download must not be parsed."
+        )
+
+    monkeypatch.setattr(
+        service.requests,
+        "get",
+        failing_get,
+    )
+    monkeypatch.setattr(
+        service.feedparser,
+        "parse",
+        unexpected_parse,
+    )
+
+    with pytest.raises(
+        service.requests.Timeout,
+        match="Controlled RSS timeout",
+    ):
+        service.collect_articles()
+
+    assert request_calls == [
+        (
+            feed_url,
+            service.RSS_REQUEST_HEADERS,
+            service.RSS_REQUEST_TIMEOUT_SECONDS,
+        )
     ]

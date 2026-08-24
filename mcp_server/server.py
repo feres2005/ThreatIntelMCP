@@ -1,6 +1,10 @@
 
 import asyncio
+import logging
 
+from observability.logging_config import (
+    configure_logging,
+)
 from mcp.server.fastmcp import FastMCP
 from database.article_repository import (
   search_articles,
@@ -49,6 +53,7 @@ from scoring.indicator_scoring_service import (
     score_indicator as score_indicator_service,
 )
 
+
 from pipeline.ingestion_service import (
     ingest_rss_articles as ingest_rss_articles_service,
 )
@@ -62,6 +67,11 @@ from pipeline.automation_service import (
 from topic_modeling.emerging_topic_service import (
     detect_emerging_topics as detect_emerging_topics_service,
 )
+logger = logging.getLogger(__name__)
+
+# TODO(POST-PFE-001):
+# Add per-tool audit events before exposing
+# MCP through a remote multi-user transport.
 
 
 mcp = FastMCP("ThreatIntelMCP")
@@ -497,5 +507,26 @@ def synchronize_github_intelligence(
         synchronize_github_intelligence_service()
     )
 
+def main():
+  configure_logging()
+
+  logger.info(
+    "Starting ThreatIntelMCP MCP server "
+    "with stdio transport."
+  )
+
+  try:
+    mcp.run(transport="stdio")
+  except Exception:
+    logger.exception(
+      "ThreatIntelMCP MCP server failed."
+    )
+    raise
+
+  logger.info(
+    "ThreatIntelMCP MCP server stopped."
+  )
+
+
 if __name__ == "__main__":
-  mcp.run(transport="stdio")
+  main()

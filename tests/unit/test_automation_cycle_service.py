@@ -1,5 +1,5 @@
 ﻿import pytest
-
+import logging
 import pipeline.automation_cycle_service as service
 from pipeline.automation_cycle_service import (
     _run_cycle_step,
@@ -487,3 +487,98 @@ def test_run_automation_cycle_fails_when_all_steps_fail(
         "article_processing",
         "embedding_indexing",
     ]
+
+def test_run_cycle_step_logs_success_and_duration(
+    monkeypatch,
+    caplog,
+):
+    timestamps = iter([
+        10.0,
+        12.5,
+    ])
+
+    monkeypatch.setattr(
+        service,
+        "perf_counter",
+        lambda: next(timestamps),
+    )
+
+    with caplog.at_level(
+        logging.INFO,
+        logger=service.__name__,
+    ):
+        result = _run_cycle_step(
+            "controlled_success",
+            lambda: {
+                "status": "completed",
+            },
+        )
+
+    assert result == {
+        "status": "completed",
+    }
+    assert (
+        "Automation step started: "
+        "controlled_success"
+        in caplog.text
+    )
+    assert (
+        "Automation step finished: "
+        "controlled_success with status "
+        "completed in 2.500 seconds"
+        in caplog.text
+    )
+
+
+def test_run_cycle_step_logs_failure_with_traceback(
+    monkeypatch,
+    caplog,
+):
+    timestamps = iter([
+        20.0,
+        20.75,
+    ])
+
+    monkeypatch.setattr(
+        service,
+        "perf_counter",
+        lambda: next(timestamps),
+    )
+
+    def failing_operation():
+        raise RuntimeError(
+            "Controlled automation failure."
+        )
+
+    with caplog.at_level(
+        logging.ERROR,
+        logger=service.__name__,
+    ):
+        result = _run_cycle_step(
+            "controlled_failure",
+            failing_operation,
+        )
+
+    assert result == {
+        "operation": "controlled_failure",
+        "status": "failed",
+        "error": (
+            "RuntimeError: "
+            "Controlled automation failure."
+        ),
+    }
+
+    error_records = [
+        record
+        for record in caplog.records
+        if record.levelno == logging.ERROR
+    ]
+
+    assert len(error_records) == 1
+    assert (
+        "Automation step failed: "
+        "controlled_failure after "
+        "0.750 seconds"
+        in error_records[0].getMessage()
+    )
+    assert error_records[0].exc_info is not None

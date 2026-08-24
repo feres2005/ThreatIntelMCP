@@ -1,11 +1,17 @@
 import argparse
 import json
 from pathlib import Path
+import logging
+from time import perf_counter
 
+from observability.logging_config import (
+    configure_logging,
+)
 from pipeline.automation_cycle_service import (
     run_automation_cycle,
 )
 
+logger = logging.getLogger(__name__)
 
 def _build_argument_parser():
     parser = argparse.ArgumentParser(
@@ -81,18 +87,56 @@ def _write_report(output_path, report_text):
 
 
 def main(arguments=None):
+    configure_logging()
     parser = _build_argument_parser()
     options = parser.parse_args(arguments)
 
-    result = run_automation_cycle(
-        processing_limit=(
-            options.processing_limit
+    started_at = perf_counter()
+
+    logger.info(
+        (
+            "Automation cycle started: "
+            "processing_limit=%s, "
+            "embedding_limit=%s, "
+            "include_otx=%s, include_cve=%s"
         ),
-        embedding_limit=(
-            options.embedding_limit
+        options.processing_limit,
+        options.embedding_limit,
+        options.include_otx,
+        options.include_cve,
+    )
+
+    try:
+        result = run_automation_cycle(
+            processing_limit=(
+                options.processing_limit
+            ),
+            embedding_limit=(
+                options.embedding_limit
+            ),
+            include_otx=options.include_otx,
+            include_cve=options.include_cve,
+        )
+    except Exception:
+        logger.exception(
+            (
+                "Automation cycle failed before "
+                "producing a structured result."
+            )
+        )
+        raise
+
+    duration_seconds = (
+        perf_counter() - started_at
+    )
+
+    logger.info(
+        (
+            "Automation cycle finished with "
+            "status %s in %.3f seconds"
         ),
-        include_otx=options.include_otx,
-        include_cve=options.include_cve,
+        result["status"],
+        duration_seconds,
     )
 
     report_text = json.dumps(
