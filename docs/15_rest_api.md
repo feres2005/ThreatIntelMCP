@@ -205,10 +205,18 @@ Les résultats sont triés du plus pertinent au moins pertinent.
 
 ## 7. Corrélation et scoring des indicateurs
 
-| Méthode | Route                            | Description                                            |
-| ------- | -------------------------------- | ------------------------------------------------------ |
-| GET     | `/api/v1/indicators/correlation` | Corrèle un IOC avec les articles et entités associées. |
-| GET     | `/api/v1/indicators/score`       | Calcule les scores d’un IOC.                           |
+| Méthode | Route                            | Description                                               |
+| ------- | -------------------------------- | --------------------------------------------------------- |
+| GET     | `/api/v1/indicators/correlation` | Corrèle et enrichit un indicateur de compromission.       |
+| GET     | `/api/v1/indicators/score`       | Calcule les scores explicables associés à un indicateur.  |
+
+Les deux opérations acceptent les paramètres suivants :
+
+| Paramètre | Type | Valeur par défaut | Description |
+| --- | --- | --- | --- |
+| `indicator` | chaîne | obligatoire | IPv4, IPv6, domaine, URL, hash MD5, SHA-1 ou SHA-256. |
+| `include_otx` | booléen | `false` | Active l’enrichissement AlienVault OTX et son cache local. |
+| `include_virustotal` | booléen | `false` | Active la consultation en lecture seule de VirusTotal et la mise à jour de son cache local de 24 heures. |
 
 Les types d’indicateurs supportés sont :
 
@@ -220,20 +228,52 @@ Les types d’indicateurs supportés sont :
 * hash SHA-1 ;
 * hash SHA-256.
 
-La corrélation peut retourner :
+Pour les fichiers, seule l’empreinte cryptographique est envoyée à l’API
+VirusTotal. ThreatIntelMCP ne téléverse aucun fichier.
+
+La corrélation retourne les preuves locales disponibles :
 
 * les articles qui contiennent l’indicateur ;
 * les CVE associées ;
 * les malwares associés ;
-* les techniques MITRE ;
+* les techniques MITRE ATT&CK ;
 * les groupes APT ;
 * les secteurs ciblés ;
-* les technologies affectées ;
-* l’enrichissement OTX optionnel.
+* les technologies affectées.
 
-Un indicateur valide sans preuve locale retourne une corrélation vide. Cette situation ne produit pas une erreur `404`.
+Lorsque les options correspondantes sont activées, elle retourne également :
 
-La corrélation représente une cooccurrence dans les renseignements disponibles. Elle ne constitue pas une preuve d’attribution ou de causalité.
+* `otx_enrichment`, avec les renseignements communautaires AlienVault OTX ;
+* `virustotal_enrichment`, avec le consensus des moteurs de sécurité VirusTotal.
+
+L’enrichissement VirusTotal peut notamment contenir :
+
+* la disponibilité du rapport ;
+* le type et l’identifiant de la ressource ;
+* les nombres de résultats malveillants, suspects, inoffensifs et non détectés ;
+* le nombre total de moteurs ayant produit un résultat ;
+* la réputation et les votes communautaires ;
+* des exemples de détection par moteur ;
+* les catégories, tags et noms connus ;
+* les métadonnées de fichier ou de réseau disponibles ;
+* la date de dernière analyse ;
+* le lien vers le rapport VirusTotal ;
+* l’état du cache : `fresh`, `refreshed` ou `stale_fallback`.
+
+Si VirusTotal est temporairement indisponible, le service peut retourner le
+dernier rapport expiré avec `cache_status="stale_fallback"` et
+`is_stale=true`. Cette stratégie conserve les renseignements précédemment
+collectés tout en signalant explicitement leur ancienneté.
+
+Un indicateur valide sans preuve locale ne produit pas une erreur `404`.
+L’API peut toujours retourner les renseignements OTX et VirusTotal disponibles.
+En l’absence de toute donnée, elle retourne une corrélation valide avec des
+collections vides.
+
+La corrélation représente une cooccurrence dans les renseignements disponibles.
+Elle ne constitue pas une preuve d’attribution ou de causalité. De même, une
+détection VirusTotal représente l’avis d’un moteur de sécurité et doit être
+validée dans son contexte opérationnel.
 
 Le scoring d’un indicateur retourne :
 
@@ -241,7 +281,13 @@ Le scoring d’un indicateur retourne :
 * le score et le niveau de confiance ;
 * la priorité ;
 * l’action recommandée ;
+* les facteurs ayant contribué aux scores ;
 * les avertissements.
+
+VirusTotal et OTX constituent les principales sources externes du scoring.
+Les articles et entités extraits localement fournissent des preuves
+complémentaires et renforcent la confiance lorsqu’ils corroborent les
+renseignements externes.
 
 ## 8. CVE
 

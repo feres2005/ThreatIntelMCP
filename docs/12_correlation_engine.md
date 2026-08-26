@@ -2,11 +2,13 @@
 
 ## 12.1 Objectif
 
-Le moteur de corrélation transforme les informations isolées de la plateforme en un contexte d'investigation exploitable par un analyste SOC.
+Le moteur de corrélation transforme les informations isolées de la plateforme en un contexte d’investigation exploitable par un analyste SOC.
 
-Il permet de rechercher les articles associés à un indicateur de compromission, puis d'identifier les entités de menace mentionnées dans ces articles : vulnérabilités CVE, malwares, techniques MITRE ATT&CK, groupes APT, secteurs ciblés et technologies affectées.
+Il normalise un indicateur de compromission, recherche les articles locaux dans lesquels il apparaît, puis identifie les entités de menace mentionnées dans ces articles : vulnérabilités CVE, malwares, techniques MITRE ATT&CK, groupes APT, secteurs ciblés et technologies affectées.
 
-Une corrélation représente une association observée dans un ou plusieurs articles. Elle ne constitue pas automatiquement une preuve d'attribution ou de causalité.
+Le moteur peut également compléter ces preuves locales avec les renseignements externes d’AlienVault OTX et de VirusTotal. Une investigation reste donc possible lorsqu’aucun article local n’est associé à l’indicateur.
+
+Une corrélation représente une association observée dans les renseignements disponibles. Elle ne constitue pas automatiquement une preuve d’attribution, de causalité ou de compromission.
 
 ## 12.2 Architecture
 
@@ -36,7 +38,18 @@ Le moteur recherche ensuite les relations enregistrées dans la table `article_i
 
 Chaque entité contient le nombre d'articles justificatifs ainsi que leurs identifiants. Cette information permet de conserver la traçabilité de la corrélation.
 
-L'enrichissement OTX peut être activé ou désactivé avec le paramètre `include_otx`. Le service réutilise le mécanisme de cache développé précédemment afin d'éviter les appels externes inutiles.
+Les enrichissements externes sont contrôlés indépendamment :
+
+- `include_otx` active la consultation d’AlienVault OTX ;
+- `include_virustotal` active la consultation en lecture seule de VirusTotal.
+
+Le résultat expose respectivement `otx_enrichment` et `virustotal_enrichment`. Lorsque l’une des options est désactivée, le champ correspondant contient `None`.
+
+Les deux services réutilisent leur cache PostgreSQL afin d’éviter les appels externes inutiles. Pour VirusTotal, un rapport expiré peut être retourné avec l’état `stale_fallback` lorsqu’une actualisation échoue. Cette ancienneté est conservée explicitement dans le résultat.
+
+Pour les fichiers, seule l’empreinte MD5, SHA-1 ou SHA-256 est consultée. ThreatIntelMCP ne téléverse aucun fichier vers VirusTotal.
+
+Les recherches externes sont indépendantes des relations enregistrées dans `article_iocs`. Un indicateur sans article justificatif peut ainsi conserver une corrélation locale vide tout en disposant de renseignements OTX ou VirusTotal.
 
 ## 12.4 Investigation consolidée d'un article
 
@@ -71,7 +84,9 @@ Les scénarios suivants ont été validés :
 - corrélation avec un et plusieurs articles ;
 - agrégation et déduplication des entités ;
 - conservation des identifiants des articles justificatifs ;
-- enrichissement OTX simulé sans appel réseau ;
+- enrichissements OTX et VirusTotal simulés sans appel réseau ;
+- activation et désactivation indépendantes des deux fournisseurs ;
+- conservation d’une corrélation valide sans article local ;
 - article inexistant ;
 - identifiant d'article invalide ;
 - enrichissement CVE disponible et indisponible ;

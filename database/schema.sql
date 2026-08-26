@@ -261,6 +261,105 @@ CREATE TABLE public.otx_indicators (
 
 
 --
+-- Name: virustotal_indicators; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.virustotal_indicators (
+    indicator text NOT NULL,
+    indicator_type text NOT NULL,
+    report_available boolean DEFAULT true NOT NULL,
+    resource_type text,
+    resource_id text,
+    malicious_count integer DEFAULT 0 NOT NULL,
+    suspicious_count integer DEFAULT 0 NOT NULL,
+    harmless_count integer DEFAULT 0 NOT NULL,
+    undetected_count integer DEFAULT 0 NOT NULL,
+    timeout_count integer DEFAULT 0 NOT NULL,
+    failure_count integer DEFAULT 0 NOT NULL,
+    type_unsupported_count integer DEFAULT 0 NOT NULL,
+    confirmed_timeout_count integer DEFAULT 0 NOT NULL,
+    total_engine_count integer DEFAULT 0 NOT NULL,
+    total_result_count integer DEFAULT 0 NOT NULL,
+    reputation integer,
+    community_votes jsonb DEFAULT '{}'::jsonb NOT NULL,
+    detections jsonb DEFAULT '[]'::jsonb NOT NULL,
+    categories jsonb DEFAULT '[]'::jsonb NOT NULL,
+    tags jsonb DEFAULT '[]'::jsonb NOT NULL,
+    names jsonb DEFAULT '[]'::jsonb NOT NULL,
+    meaningful_name text,
+    file_type text,
+    country text,
+    asn bigint,
+    as_owner text,
+    last_analysis_date timestamp with time zone,
+    permalink text,
+    last_checked timestamp with time zone
+        DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT virustotal_indicators_pkey
+        PRIMARY KEY (indicator, indicator_type),
+    CONSTRAINT virustotal_indicator_not_empty
+        CHECK ((btrim(indicator) <> ''::text)),
+    CONSTRAINT virustotal_indicator_type_valid
+        CHECK (
+            indicator_type = ANY (
+                ARRAY[
+                    'IPv4'::text,
+                    'IPv6'::text,
+                    'domain'::text,
+                    'URL'::text,
+                    'FileHash-MD5'::text,
+                    'FileHash-SHA1'::text,
+                    'FileHash-SHA256'::text
+                ]
+            )
+        ),
+    CONSTRAINT virustotal_resource_present
+        CHECK (
+            (NOT report_available)
+            OR (
+                resource_type IS NOT NULL
+                AND resource_id IS NOT NULL
+            )
+        ),
+    CONSTRAINT virustotal_counts_nonnegative
+        CHECK (
+            malicious_count >= 0
+            AND suspicious_count >= 0
+            AND harmless_count >= 0
+            AND undetected_count >= 0
+            AND timeout_count >= 0
+            AND failure_count >= 0
+            AND type_unsupported_count >= 0
+            AND confirmed_timeout_count >= 0
+            AND total_engine_count >= 0
+            AND total_result_count >= 0
+        ),
+    CONSTRAINT virustotal_engine_count_consistent
+        CHECK (
+            total_engine_count = (
+                malicious_count
+                + suspicious_count
+                + harmless_count
+                + undetected_count
+            )
+        ),
+    CONSTRAINT virustotal_result_count_consistent
+        CHECK (
+            total_result_count = (
+                malicious_count
+                + suspicious_count
+                + harmless_count
+                + undetected_count
+                + timeout_count
+                + failure_count
+                + type_unsupported_count
+                + confirmed_timeout_count
+            )
+        )
+);
+
+
+--
 -- Name: article_analysis article_id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -374,6 +473,14 @@ ALTER TABLE ONLY public.articles
 --
 
 CREATE INDEX idx_article_iocs_indicator ON public.article_iocs USING btree (indicator, indicator_type);
+
+
+--
+-- Name: idx_virustotal_indicators_last_checked; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_virustotal_indicators_last_checked
+    ON public.virustotal_indicators USING btree (last_checked DESC);
 
 
 --

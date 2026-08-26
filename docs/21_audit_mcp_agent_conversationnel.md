@@ -109,7 +109,7 @@ L’API FastAPI publie 21 opérations :
 
 ## 5. Inventaire MCP
 
-Le serveur MCP expose 30 outils :
+Le serveur MCP expose 31 outils :
 
 ### 5.1 État et articles
 
@@ -144,6 +144,7 @@ Le serveur MCP expose 30 outils :
 ### 5.5 Indicateurs
 
 - `lookup_otx_indicator`
+- `lookup_virustotal_indicator`
 - `correlate_threat_indicator`
 - `score_threat_indicator`
 

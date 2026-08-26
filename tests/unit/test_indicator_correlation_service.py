@@ -124,7 +124,7 @@ def test_correlate_indicator_rejects_invalid_iocs(
     )
 
 
-def test_correlate_indicator_skips_otx_when_disabled(
+def test_correlate_indicator_skips_external_lookups_when_disabled(
     monkeypatch,
 ):
     captured = {}
@@ -135,6 +135,14 @@ def test_correlate_indicator_skips_otx_when_disabled(
     ):
         raise AssertionError(
             "OTX lookup should be disabled."
+        )
+
+    def unexpected_virustotal_lookup(
+        indicator,
+        indicator_type,
+    ):
+        raise AssertionError(
+            "VirusTotal lookup should be disabled."
         )
 
     def fake_get_article_ids(
@@ -159,6 +167,11 @@ def test_correlate_indicator_skips_otx_when_disabled(
     )
     monkeypatch.setattr(
         service,
+        "lookup_virustotal_indicator",
+        unexpected_virustotal_lookup,
+    )
+    monkeypatch.setattr(
+        service,
         "get_article_ids_by_indicator",
         fake_get_article_ids,
     )
@@ -171,6 +184,7 @@ def test_correlate_indicator_skips_otx_when_disabled(
     result = correlate_indicator(
         "Example[.]COM.",
         include_otx=False,
+        include_virustotal=False,
     )
 
     assert captured["repository_arguments"] == (
@@ -193,10 +207,11 @@ def test_correlate_indicator_skips_otx_when_disabled(
             "affected_technologies": [],
         },
         "otx_enrichment": None,
+        "virustotal_enrichment": None,
     }
 
 
-def test_correlate_indicator_combines_articles_and_otx(
+def test_correlate_indicator_combines_articles_and_external_intelligence(
     monkeypatch,
 ):
     captured = {
@@ -206,6 +221,12 @@ def test_correlate_indicator_combines_articles_and_otx(
     otx_result = {
         "indicator": "example.com",
         "pulse_count": 4,
+    }
+    virustotal_result = {
+        "indicator": "example.com",
+        "report_available": True,
+        "malicious_count": 7,
+        "total_engine_count": 60,
     }
 
     correlations = {
@@ -277,6 +298,16 @@ def test_correlate_indicator_combines_articles_and_otx(
         )
         return otx_result
 
+    def fake_virustotal_lookup(
+        indicator,
+        indicator_type,
+    ):
+        captured["virustotal_arguments"] = (
+            indicator,
+            indicator_type,
+        )
+        return virustotal_result
+
     def fake_get_article_ids(
         indicator,
         indicator_type,
@@ -304,6 +335,11 @@ def test_correlate_indicator_combines_articles_and_otx(
     )
     monkeypatch.setattr(
         service,
+        "lookup_virustotal_indicator",
+        fake_virustotal_lookup,
+    )
+    monkeypatch.setattr(
+        service,
         "get_article_ids_by_indicator",
         fake_get_article_ids,
     )
@@ -316,9 +352,14 @@ def test_correlate_indicator_combines_articles_and_otx(
     result = correlate_indicator(
         "Example[.]COM",
         include_otx=True,
+        include_virustotal=True,
     )
 
     assert captured["otx_arguments"] == (
+        "example.com",
+        "domain",
+    )
+    assert captured["virustotal_arguments"] == (
         "example.com",
         "domain",
     )
@@ -339,6 +380,10 @@ def test_correlate_indicator_combines_articles_and_otx(
         3,
     ]
     assert result["otx_enrichment"] is otx_result
+    assert (
+        result["virustotal_enrichment"]
+        is virustotal_result
+    )
 
     assert result["supporting_articles"] == [
         {

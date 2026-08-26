@@ -442,6 +442,7 @@ def test_build_indicator_scoring_report_without_articles():
         "supporting_article_ids": [],
         "related_entities": {},
         "otx_enrichment": None,
+        "virustotal_enrichment": None,
     }
 
     result = build_indicator_scoring_report(
@@ -455,7 +456,7 @@ def test_build_indicator_scoring_report_without_articles():
         "indicator": "example.com",
         "indicator_type": "domain",
     }
-    assert result["scoring_version"] == "1.0"
+    assert result["scoring_version"] == "2.0"
 
 
 def test_build_indicator_scoring_report_delegates_inputs(
@@ -521,6 +522,12 @@ def test_build_indicator_scoring_report_delegates_inputs(
     otx_record = {
         "pulse_count": 5,
     }
+    virustotal_record = {
+        "report_available": True,
+        "malicious_count": 7,
+        "suspicious_count": 0,
+        "total_engine_count": 60,
+    }
 
     correlation = {
         "indicator": " 8.8.8.8 ",
@@ -544,6 +551,9 @@ def test_build_indicator_scoring_report_delegates_inputs(
         ],
         "related_entities": related_entities,
         "otx_enrichment": otx_record,
+        "virustotal_enrichment": (
+            virustotal_record
+        ),
     }
 
     result = build_indicator_scoring_report(
@@ -557,6 +567,7 @@ def test_build_indicator_scoring_report_delegates_inputs(
     ] is cve_enrichment
 
     assert captured["scoring_arguments"] == {
+        "virustotal_record": virustotal_record,
         "article_severity": "High",
         "cvss_scores": [9.8],
         "otx_record": otx_record,
@@ -625,10 +636,12 @@ def test_score_indicator_orchestrates_correlation_and_enrichment(
     def fake_correlate(
         indicator,
         include_otx,
+        include_virustotal,
     ):
         captured["correlation_arguments"] = (
             indicator,
             include_otx,
+            include_virustotal,
         )
         return correlation
 
@@ -681,6 +694,7 @@ def test_score_indicator_orchestrates_correlation_and_enrichment(
     result = score_indicator(
         "8.8.8.8",
         include_otx=False,
+        include_virustotal=True,
     )
 
     assert result is expected
@@ -689,6 +703,7 @@ def test_score_indicator_orchestrates_correlation_and_enrichment(
     ] == (
         "8.8.8.8",
         False,
+        True,
     )
     assert captured["cve_entities"] is (
         related_entities

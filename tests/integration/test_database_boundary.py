@@ -16,6 +16,7 @@ EXPECTED_TABLES = {
     "intelligence_embeddings",
     "mitre_techniques",
     "otx_indicators",
+    "virustotal_indicators",
 }
 
 

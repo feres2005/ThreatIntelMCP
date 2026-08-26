@@ -1,5 +1,10 @@
 # Validation finale end-to-end
 
+> **Note d'alignement :** les résultats chiffrés de 1 086 tests conservés dans
+> ce chapitre correspondent à la validation réalisée avant l'ajout de
+> VirusTotal. La validation finale post-VirusTotal contient **1 153 tests** :
+> **1 097 tests Python** et **56 tests frontend**.
+
 ## 1. Objectif
 
 Ce chapitre présente la validation finale de ThreatIntelMCP.

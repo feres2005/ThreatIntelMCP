@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-
+import logging
 from api.app import app
 from api.routers import search as search_router
 
@@ -125,9 +125,9 @@ def test_semantic_search_rejects_invalid_input(
 
     assert worker_called is False
 
-
 def test_semantic_search_maps_worker_failure(
     monkeypatch,
+    caplog,
 ):
     async def failing_search_worker(
         search_query,
@@ -143,15 +143,23 @@ def test_semantic_search_maps_worker_failure(
         failing_search_worker,
     )
 
-    with TestClient(app) as client:
-        response = client.get(
-            "/api/v1/search/articles/semantic",
-            params={
-                "search_query": "ransomware",
-                "limit": 3,
-            },
-        )
+    with caplog.at_level(
+        logging.ERROR,
+        logger=search_router.__name__,
+    ):
+        with TestClient(app) as client:
+            response = client.get(
+                "/api/v1/search/articles/semantic",
+                params={
+                    "search_query": "ransomware",
+                    "limit": 3,
+                },
+            )
 
+    assert (
+        "Simulated semantic worker failure."
+        in caplog.text
+    )
     assert response.status_code == 503
     assert response.json() == {
         "detail": (

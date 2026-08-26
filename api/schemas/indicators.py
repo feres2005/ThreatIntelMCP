@@ -67,6 +67,71 @@ class RelatedEntitiesResponse(BaseModel):
     ]
 
 
+class VirusTotalCommunityVotesResponse(
+    BaseModel
+):
+    harmless: NonNegativeInt = 0
+    malicious: NonNegativeInt = 0
+
+
+class VirusTotalDetectionResponse(BaseModel):
+    engine_name: str
+    category: Literal[
+        "malicious",
+        "suspicious",
+    ]
+    result: str | None
+    method: str | None
+
+
+class VirusTotalEnrichmentResponse(BaseModel):
+    indicator: IndicatorValue
+    indicator_type: IndicatorType
+    report_available: bool
+    resource_type: Literal[
+        "file",
+        "ip_address",
+        "domain",
+        "url",
+    ] | None
+    resource_id: str | None
+    malicious_count: NonNegativeInt
+    suspicious_count: NonNegativeInt
+    harmless_count: NonNegativeInt
+    undetected_count: NonNegativeInt
+    timeout_count: NonNegativeInt
+    failure_count: NonNegativeInt
+    type_unsupported_count: NonNegativeInt
+    confirmed_timeout_count: NonNegativeInt
+    total_engine_count: NonNegativeInt
+    total_result_count: NonNegativeInt
+    reputation: int | None
+    community_votes: (
+        VirusTotalCommunityVotesResponse
+    )
+    detections: list[
+        VirusTotalDetectionResponse
+    ]
+    categories: list[str]
+    tags: list[str]
+    names: list[str]
+    meaningful_name: str | None
+    file_type: str | None
+    country: str | None
+    asn: int | None
+    as_owner: str | None
+    last_analysis_date: datetime | None
+    permalink: HttpUrl | None
+    last_checked: datetime
+    source: Literal["virustotal"]
+    cache_status: Literal[
+        "fresh",
+        "refreshed",
+        "stale_fallback",
+    ]
+    is_stale: bool
+
+
 class IndicatorCorrelationResponse(BaseModel):
     indicator: IndicatorValue
     indicator_type: IndicatorType
@@ -77,6 +142,9 @@ class IndicatorCorrelationResponse(BaseModel):
     ]
     related_entities: RelatedEntitiesResponse
     otx_enrichment: dict[str, Any] | None
+    virustotal_enrichment: (
+        VirusTotalEnrichmentResponse | None
+    )
 
 class IndicatorScoringTarget(BaseModel):
     entity_type: Literal["indicator"]

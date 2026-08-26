@@ -11,13 +11,13 @@ L'objectif de cette intégration est de compléter les informations disponibles 
 
 ## 9.2 Architecture générale
 
-L'intégration des GitHub Security Advisories suit une architecture similaire à celle utilisée pour les flux RSS. Les avis de sécurité sont récupérés automatiquement via l'API GraphQL de GitHub, normalisés puis enregistrés dans la base de données PostgreSQL.
+L'intégration des GitHub Security Advisories suit une architecture similaire à celle utilisée pour les flux RSS. Les avis de sécurité sont récupérés automatiquement via l'API REST publique de GitHub, normalisés puis enregistrés dans la base de données PostgreSQL.
 
 Les données enregistrées sont ensuite exposées par le serveur MCP afin d'être utilisées par des assistants IA ou par les analystes SOC.
 
 Architecture générale :
 
-GitHub GraphQL API
+GitHub REST API
         │
         ▼
 Collecteur GitHub
@@ -42,11 +42,11 @@ Assistant IA / Analyste SOC
 
 ## 9.3 Collecte des GitHub Security Advisories
 
-Les GitHub Security Advisories sont récupérés automatiquement à l'aide de l'API GraphQL officielle de GitHub.
+Les GitHub Security Advisories sont récupérés automatiquement à l'aide de l'API REST officielle de GitHub, sur la ressource `https://api.github.com/advisories`.
 
-Contrairement à l'API REST, l'API GraphQL permet de récupérer uniquement les informations nécessaires en une seule requête, réduisant ainsi le nombre de requêtes HTTP et améliorant les performances du collecteur.
+Le collecteur transmet les filtres de type, de pagination et de modification directement à l'API. Les objets reçus sont ensuite normalisés avant leur persistance.
 
-L'accès à l'API nécessite un Personal Access Token (PAT), stocké dans les variables d'environnement du projet afin d'éviter toute exposition des informations d'authentification dans le code source.
+Un Personal Access Token (PAT) peut être fourni par la variable d'environnement `GITHUB_TOKEN` pour augmenter le quota. Sans jeton, l'API publique reste utilisable avec une limite plus faible.
 
 Le collecteur récupère notamment les informations suivantes :
 
@@ -68,7 +68,7 @@ Afin d'éviter le téléchargement complet de toutes les données à chaque exé
 
 Lors de chaque exécution, la date de la dernière mise à jour enregistrée dans la base de données est récupérée. Seuls les advisories modifiés après cette date sont ensuite demandés à GitHub.
 
-Lorsque plusieurs pages de résultats sont disponibles, la pagination GraphQL est utilisée afin de récupérer progressivement l'ensemble des données jusqu'à la fin des résultats disponibles.
+Lorsque plusieurs pages de résultats sont disponibles, le collecteur lit le lien `next` de la réponse HTTP et réutilise le curseur `after` afin de récupérer progressivement les données.
 
 
 ## 9.4 Stockage des données
@@ -178,7 +178,7 @@ Plusieurs tests ont été réalisés afin de valider le bon fonctionnement de l'
 
 Le collecteur a été exécuté à plusieurs reprises afin de vérifier :
 
-- la récupération correcte des advisories depuis l'API GraphQL ;
+- la récupération correcte des advisories depuis l'API REST ;
 - la gestion de la pagination ;
 - la synchronisation incrémentale ;
 - la mise à jour des advisories existants.

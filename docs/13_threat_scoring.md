@@ -38,12 +38,14 @@ L'architecture distingue le calcul pur des opérations d'intégration.
 | Module | Responsabilité |
 | --- | --- |
 | `scoring/threat_scoring.py` | Calcul du score de menace et de ses composants. |
+| `scoring/indicator_intelligence_scoring.py` | Calcul multi-source spécifique aux indicateurs avec VirusTotal, OTX et corroboration locale. |
 | `scoring/confidence_scoring.py` | Calcul du score de confiance et de ses composants. |
 | `scoring/priority.py` | Conversion des niveaux de menace et de confiance en priorité opérationnelle. |
 | `scoring/scoring_service.py` | Construction d'un rapport unifié contenant les deux scores et la priorité. |
 | `scoring/enrichment_mapping.py` | Transformation des enrichissements CVE en valeurs CVSS utilisables. |
 | `scoring/article_scoring_service.py` | Adaptation des résultats d'investigation d'un article vers le moteur de scoring. |
 | `scoring/indicator_scoring_service.py` | Adaptation des résultats de corrélation d'un indicateur vers le moteur de scoring. |
+
 
 Les fonctions de calcul principales ne réalisent aucun accès à la base de données et aucun appel à une API externe. Elles reçoivent des données normalisées et retournent des dictionnaires explicables.
 
@@ -57,9 +59,14 @@ Les services d'adaptation utilisent les modules développés précédemment :
 
 ## 13.4 Calcul du score de menace
 
+## 13.4 Calcul du score de menace
+
 Le score de menace est compris entre 0 et 100. Il représente le niveau de danger associé aux éléments observés lorsque ceux-ci sont considérés comme exacts.
 
+Les sections 13.4 et 13.5 décrivent le moteur de scoring général utilisé pour les articles. Le scoring d’un indicateur applique une pondération multi-source spécifique, versionnée `2.0`, décrite dans la section 13.7.2.
+
 Il est composé de cinq facteurs indépendants.
+
 
 ### 13.4.1 Sévérité de l'article
 
@@ -294,30 +301,140 @@ Un seul enregistrement OTX représentatif est sélectionné selon l'ordre suivan
 
 Cette stratégie évite qu'un article contenant de nombreux indicateurs obtienne automatiquement un score disproportionné.
 
-### 13.7.2 Scoring d'un indicateur
+### 13.7.2 Scoring d’un indicateur
 
-La fonction publique `score_indicator()` appelle le moteur de corrélation afin d'obtenir :
+La fonction publique `score_indicator()` appelle le moteur de corrélation avec les options `include_otx` et `include_virustotal`.
 
-- les articles justificatifs ;
-- les niveaux de sévérité ;
-- les valeurs de confiance IA ;
-- les CVE associées ;
-- les malwares associés ;
-- les techniques MITRE ATT&CK ;
-- les groupes APT ;
-- l'enrichissement OTX de l'indicateur.
+Elle récupère :
 
-Lorsque plusieurs articles sont associés au même indicateur, seule la sévérité d'article la plus élevée contribue au score de menace.
+* l’enrichissement VirusTotal ;
+* l’enrichissement AlienVault OTX ;
+* les articles justificatifs ;
+* la sévérité la plus élevée parmi ces articles ;
+* les valeurs de confiance IA ;
+* les CVE associées et leurs scores CVSS ;
+* les malwares et groupes APT ;
+* les techniques MITRE ATT&CK ;
+* les enrichissements CVE et MITRE disponibles.
 
-En revanche, tous les identifiants d'articles distincts et toutes les valeurs de confiance IA valides contribuent au score de confiance.
+Le modèle spécifique aux indicateurs porte la version `2.0`. Il sépare les renseignements externes de la corroboration locale.
 
-Les identifiants CVE et MITRE sont recherchés dans les repositories existants. Les résultats sont convertis vers une structure commune contenant :
+#### 13.7.2.1 Pondération du score de menace
 
-- l'identifiant ;
-- la disponibilité de l'enrichissement ;
-- les détails récupérés ou la valeur `None`.
+| Source               |        Maximum |
+| -------------------- | -------------: |
+| VirusTotal           |      45 points |
+| AlienVault OTX       |      20 points |
+| Corroboration locale |      35 points |
+| **Total**            | **100 points** |
 
-Les erreurs d'infrastructure, telles qu'une indisponibilité de PostgreSQL, ne sont pas transformées silencieusement en absence de preuve. Elles restent visibles afin d'éviter la production d'un score trompeur.
+VirusTotal constitue la composante principale du score de menace d’un indicateur. Le nombre pondéré de détections est calculé ainsi :
+
+```text
+détections_pondérées =
+    détections_malveillantes
+    + (détections_suspectes × 0,5)
+
+ratio_détection =
+    détections_pondérées
+    / nombre_total_de_moteurs
+```
+
+Les détections suspectes possèdent ainsi la moitié du poids des détections malveillantes.
+
+| Ratio de détection VirusTotal                | Points |
+| -------------------------------------------- | -----: |
+| Aucune détection pondérée                    |      0 |
+| Supérieur à 0 et inférieur ou égal à 2 %     |      8 |
+| Supérieur à 2 % et inférieur ou égal à 5 %   |     15 |
+| Supérieur à 5 % et inférieur ou égal à 15 %  |     25 |
+| Supérieur à 15 % et inférieur ou égal à 30 % |     35 |
+| Supérieur à 30 %                             |     45 |
+
+Les statistiques sont considérées comme valides uniquement lorsque :
+
+* les nombres de détections sont des entiers positifs ou nuls ;
+* le nombre total de moteurs est strictement positif ;
+* la somme des détections malveillantes et suspectes ne dépasse pas le nombre total de moteurs.
+
+Un rapport contenant des statistiques invalides ne contribue pas au score de menace et produit un avertissement explicite.
+
+L’existence d’un rapport VirusTotal sans détection constitue néanmoins une preuve disponible. En l’absence d’autres signaux, le score numérique peut alors être égal à zéro avec le niveau `Informational`. L’absence totale de rapport et de toute autre preuve produit le niveau `Unknown`.
+
+La contribution OTX originale est ramenée proportionnellement à un maximum de 20 points. Une validation OTX explicite de whitelist ou de faux positif annule uniquement la contribution de menace OTX.
+
+La corroboration locale contribue jusqu’à 35 points :
+
+| Composante locale                    |   Maximum |
+| ------------------------------------ | --------: |
+| Sévérité la plus élevée des articles | 12 points |
+| Score CVSS valide le plus élevé      | 12 points |
+| Malwares et groupes APT              |  8 points |
+| Techniques MITRE ATT&CK              |  3 points |
+
+Chaque composante locale reprend les règles du moteur général, puis son résultat est ramené proportionnellement au plafond spécifique indiqué. Les nombres d’articles ou d’entités ne permettent donc pas de dépasser ces plafonds.
+
+Le score total correspond à la somme des trois sources, limitée à 100.
+
+#### 13.7.2.2 Niveaux de menace d’un indicateur
+
+|                                      Score | Niveau          |
+| -----------------------------------------: | --------------- |
+|                  Aucune preuve exploitable | `Unknown`       |
+| 0 à moins de 10 avec une preuve disponible | `Informational` |
+|                           10 à moins de 25 | `Low`           |
+|                           25 à moins de 45 | `Medium`        |
+|                           45 à moins de 70 | `High`          |
+|                                   70 à 100 | `Critical`      |
+
+Ces seuils sont propres au modèle de scoring des indicateurs `2.0`. Ils diffèrent des seuils du moteur général utilisé pour les articles.
+
+#### 13.7.2.3 Pondération du score de confiance
+
+| Source                   |        Maximum |
+| ------------------------ | -------------: |
+| Corroboration VirusTotal |      35 points |
+| Corroboration OTX        |      25 points |
+| Corroboration locale     |      40 points |
+| **Total**                | **100 points** |
+
+La confiance VirusTotal est calculée à partir de trois facteurs :
+
+| Facteur VirusTotal                     | Condition                    | Points |
+| -------------------------------------- | ---------------------------- | -----: |
+| Enregistrement disponible sans rapport | Aucun rapport connu          |      5 |
+| Rapport disponible                     | Rapport exploitable          |     15 |
+| Couverture des moteurs                 | 1 à 19 moteurs               |      5 |
+| Couverture des moteurs                 | 20 à 49 moteurs              |     10 |
+| Couverture des moteurs                 | 50 moteurs ou plus           |     15 |
+| Fraîcheur                              | Cache `fresh` ou `refreshed` |      5 |
+| Fraîcheur                              | Cache `stale_fallback`       |      1 |
+
+Un rapport VirusTotal disponible peut ainsi contribuer jusqu’à 35 points de confiance.
+
+Un rapport obtenu depuis un cache expiré conserve sa contribution au score de menace, car les détections historiques restent une information pertinente. En revanche, sa contribution de fraîcheur est réduite de 5 à 1 point et un avertissement signale l’utilisation de données anciennes.
+
+La contribution OTX au score de confiance est ramenée proportionnellement à un maximum de 25 points.
+
+La confiance locale est calculée à partir :
+
+* des identifiants distincts des articles justificatifs ;
+* des valeurs valides de confiance IA ;
+* des enrichissements CVE et MITRE ;
+* de l’accord des entités entre plusieurs articles.
+
+Le résultat local original, calculé sur 80 points hors OTX, est ramené proportionnellement à un maximum de 40 points.
+
+#### 13.7.2.4 Indicateur sans article local
+
+L’absence d’article associé n’empêche pas le calcul. VirusTotal ou OTX peut fournir une preuve exploitable et permettre de produire des scores de menace et de confiance.
+
+Les articles et entités locales constituent alors des preuves complémentaires. Lorsqu’ils sont disponibles, ils renforcent la corroboration et la traçabilité, mais ils ne sont plus une condition obligatoire pour évaluer l’indicateur.
+
+Une détection VirusTotal, une présence dans des pulses OTX ou une association observée dans un article reste un renseignement à interpréter dans son contexte. Aucun de ces éléments ne constitue isolément une preuve automatique de compromission, d’attribution ou de causalité.
+
+Les erreurs d’infrastructure, telles qu’une indisponibilité de PostgreSQL, ne sont pas transformées silencieusement en absence de preuve. Elles restent visibles afin d’éviter la production d’un score trompeur.
+
 
 ## 13.8 Structure du rapport
 

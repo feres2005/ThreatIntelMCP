@@ -242,12 +242,14 @@ export function getArticleScoring(
 export interface IndicatorLookupParameters {
   indicator: string
   includeOtx?: boolean
+  includeVirusTotal?: boolean
 }
 
 export function getIndicatorCorrelation(
   {
     indicator,
     includeOtx = false,
+    includeVirusTotal = false,
   }: IndicatorLookupParameters,
   signal?: AbortSignal,
 ): Promise<IndicatorCorrelationResponse> {
@@ -262,6 +264,9 @@ export function getIndicatorCorrelation(
   const parameters = new URLSearchParams({
     indicator: normalizedIndicator,
     include_otx: String(includeOtx),
+    include_virustotal: String(
+      includeVirusTotal,
+    ),
   })
 
   return requestJson(
@@ -276,6 +281,7 @@ export function getIndicatorScoring(
   {
     indicator,
     includeOtx = false,
+    includeVirusTotal = false,
   }: IndicatorLookupParameters,
   signal?: AbortSignal,
 ): Promise<IndicatorScoringResponse> {
@@ -290,6 +296,9 @@ export function getIndicatorScoring(
   const parameters = new URLSearchParams({
     indicator: normalizedIndicator,
     include_otx: String(includeOtx),
+    include_virustotal: String(
+      includeVirusTotal,
+    ),
   })
 
   return requestJson(

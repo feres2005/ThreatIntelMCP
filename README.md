@@ -14,22 +14,22 @@ The platform is designed for SOC investigation workflows. It combines determinis
 
 **REST API:** 21 validated GET operations.
 
-**MCP server:** 30 tools, including read-only investigation tools and confirmation-protected action tools.
+**MCP server:** 31 tools, including read-only investigation tools and confirmation-protected action tools.
 
-**Automated validation:** 1,086 tests across the Python backend and TypeScript frontend.
+**Automated validation:** 1,153 tests: 1,097 Python tests and 56 frontend tests.
 
 The implemented pipeline is:
 
 ```text
 RSS, GitHub and MITRE collection
-â†’ PostgreSQL and pgvector storage
-â†’ Claude article analysis
-â†’ IOC normalization and CVE/OTX enrichment
-â†’ multi-source correlation
-â†’ explainable threat and confidence scoring
-â†’ semantic indexing and emerging-topic detection
-â†’ REST API, web frontend and MCP server
-â†’ SOC analyst or conversational assistant
+-> PostgreSQL and pgvector storage
+-> Claude article analysis
+-> IOC normalization and CVE/OTX/VirusTotal enrichment
+-> multi-source correlation
+-> explainable threat and confidence scoring
+-> semantic indexing and emerging-topic detection
+-> REST API, web frontend and MCP server
+-> SOC analyst or conversational assistant
 ```
 
 ### Implemented capabilities
@@ -41,6 +41,7 @@ RSS, GitHub and MITRE collection
 - [x] Strict IOC normalization and type validation
 - [x] NVD CVE lookup, normalization, caching and stale-cache fallback
 - [x] AlienVault OTX lookup, caching and stale-cache fallback
+- [x] VirusTotal indicator lookup, normalization, 24-hour caching and stale-cache fallback
 - [x] GitHub Security Advisory collection, package relationships and retrieval
 - [x] MITRE ATT&CK synchronization for Enterprise, Mobile and ICS
 - [x] Idempotent curated-report imports for MacSync and TWINLOOT intelligence
@@ -70,8 +71,8 @@ RSS, GitHub and MITRE collection
 
 ### Remaining PFE delivery work
 
-- [ ] Final report alignment with the PFE specification
-- [ ] Presentation slides and demonstration script
+- [x] Final report alignment checklist and PFE traceability matrix
+- [x] Presentation slides and controlled demonstration script
 - [ ] Final screenshots and delivery packaging
 
 Production deployment, remote authentication and continuous synchronization are intentionally reserved for post-PFE development.
@@ -117,6 +118,7 @@ External services can be mocked while tests continue to exercise internal servic
 | GitHub Security Advisories | Package and vulnerability advisories | Operational |
 | MITRE ATT&CK | Enterprise, Mobile and ICS techniques | Operational |
 | AlienVault OTX | Indicator reputation and pulse intelligence | Operational |
+| VirusTotal | Indicator analysis statistics and detection consensus | Operational |
 
 ## Core capabilities
 
@@ -128,7 +130,7 @@ An analysis failure leaves the article unprocessed. A later retry can succeed wi
 
 ### Enrichment and caching
 
-CVE intelligence is obtained from NVD and indicator intelligence from AlienVault OTX. Both integrations normalize external responses before storage and use local cache-freshness rules.
+CVE intelligence is obtained from NVD and indicator intelligence from AlienVault OTX and VirusTotal. All integrations normalize external responses before storage and use local cache-freshness rules. VirusTotal lookups use the public report APIs for IP addresses, domains, URLs and file hashes; the project never uploads a file sample.
 
 When a provider is unavailable, stale cached intelligence can remain available with explicit warnings. Automated tests mock unstable external boundaries and do not require live Internet services.
 
@@ -178,7 +180,7 @@ Article embeddings are created in advance. During a search, only the query is em
 The indexed passage prioritizes content in this order:
 
 ```text
-AI summary â†’ RSS summary â†’ title
+AI summary -> RSS summary -> title
 ```
 
 Natural-language queries are supported in English and French. The embedding worker runs in an isolated subprocess so a timeout can terminate it without leaving a zombie process or corrupting MCP stdio communication.
@@ -251,7 +253,7 @@ Interactive OpenAPI documentation is available at `http://127.0.0.1:8000/docs` w
 
 ## MCP server
 
-The MCP server exposes 30 tools over local stdio.
+The MCP server exposes 31 tools over local stdio.
 
 ### General and article intelligence
 
@@ -269,6 +271,7 @@ The MCP server exposes 30 tools over local stdio.
 - `get_cve_details`
 - `get_cve_supporting_articles`
 - `lookup_otx_indicator`
+- `lookup_virustotal_indicator`
 - `correlate_threat_indicator`
 - `score_threat_indicator`
 - `search_malware`
@@ -301,27 +304,27 @@ Mutating tools require an explicit `confirm=true`. Search and investigation tool
 
 ```text
 ThreatIntelMCP/
-â”œâ”€â”€ ai/                    # Claude analysis and validation
-â”œâ”€â”€ api/                   # FastAPI application, routers and schemas
-â”œâ”€â”€ collectors/            # RSS, GitHub, MITRE and OTX collectors
-â”œâ”€â”€ correlation/           # Article and indicator investigations
-â”œâ”€â”€ database/              # SQLAlchemy Core repositories and schema
-â”‚   â””â”€â”€ migrations/        # Versioned database migrations
-â”œâ”€â”€ docs/                  # French technical documentation
-â”œâ”€â”€ enrichment/            # CVE, IOC and OTX enrichment
-â”œâ”€â”€ frontend/              # React and TypeScript SOC console
-â”œâ”€â”€ mcp_server/            # MCP server and test client
-â”œâ”€â”€ observability/         # Controlled rotating logging configuration
-â”œâ”€â”€ pipeline/              # Ingestion, processing and automation services
-â”œâ”€â”€ scoring/               # Threat, confidence and priority scoring
-â”œâ”€â”€ scripts/               # Automation, import and maintenance commands
-â”œâ”€â”€ semantic_search/       # Embedding and semantic-search services
-â”œâ”€â”€ topic_modeling/        # Emerging-topic detection
-â”œâ”€â”€ tests/                 # Unit, contract and integration tests
-â”œâ”€â”€ .env.example           # Secret-free environment template
-â”œâ”€â”€ main.py                # Automation-cycle CLI entry point
-â”œâ”€â”€ requirements.txt
-â””â”€â”€ README.md
+|-- ai/                    # Claude analysis and validation
+|-- api/                   # FastAPI application, routers and schemas
+|-- collectors/            # RSS, GitHub, MITRE, OTX and VirusTotal collectors
+|-- correlation/           # Article and indicator investigations
+|-- database/              # SQLAlchemy Core repositories and schema
+|   `-- migrations/        # Versioned database migrations
+|-- docs/                  # French technical documentation
+|-- enrichment/            # CVE, IOC, OTX and VirusTotal enrichment
+|-- frontend/              # React and TypeScript SOC console
+|-- mcp_server/            # MCP server and test client
+|-- observability/         # Controlled rotating logging configuration
+|-- pipeline/              # Ingestion, processing and automation services
+|-- scoring/               # Threat, confidence and priority scoring
+|-- scripts/               # Automation, import and maintenance commands
+|-- semantic_search/       # Embedding and semantic-search services
+|-- topic_modeling/        # Emerging-topic detection
+|-- tests/                 # Unit, contract and integration tests
+|-- .env.example           # Secret-free environment template
+|-- main.py                # Automation-cycle CLI entry point
+|-- requirements.txt
+`-- README.md
 ```
 
 ## Technology stack
@@ -340,6 +343,7 @@ ThreatIntelMCP/
 - GitHub Security Advisories
 - MITRE ATT&CK STIX data
 - AlienVault OTX
+- VirusTotal API v3
 - pytest and pytest-cov
 
 ### Frontend
@@ -418,7 +422,7 @@ Never commit `.env` or real credentials.
 
 Use three VS Code PowerShell terminals.
 
-### Terminal 1 â€” REST backend
+### Terminal 1 - REST backend
 
 ```powershell
 Set-Location "C:\path\to\ThreatIntelMCP"
@@ -432,7 +436,7 @@ Available locally at:
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 
-### Terminal 2 â€” frontend
+### Terminal 2 - frontend
 
 ```powershell
 Set-Location "C:\path\to\ThreatIntelMCP"
@@ -441,7 +445,7 @@ npm.cmd --prefix frontend run dev
 
 The frontend is normally available at `http://127.0.0.1:5173`.
 
-### Terminal 3 â€” maintenance and tests
+### Terminal 3 - maintenance and tests
 
 ```powershell
 Set-Location "C:\path\to\ThreatIntelMCP"
@@ -523,9 +527,10 @@ The final validated test inventory is:
 |---|---:|
 | Python non-integration | 1,018 passed |
 | PostgreSQL integration | 12 passed |
-| Python total | 1,030 tests |
-| Frontend | 56 passed across 19 files |
-| Combined total | 1,086 tests |
+| Python baseline before VirusTotal | 1,030 tests |
+| Frontend baseline before VirusTotal | 56 passed across 19 files |
+| Final validation after VirusTotal | 1,153 tests: 1,097 Python and 56 frontend |
+| Final post-VirusTotal total | Recollect before freezing the report |
 
 No coverage threshold is currently configured. Test counts and behavior are reported directly without claiming an unconfigured coverage gate.
 
@@ -620,11 +625,21 @@ The semantic worker currently inherits the parent environment. Restricting it to
 
 French technical documentation is maintained in `docs/`. Recent finalization documents include:
 
-- `19_interface_web.md` â€” frontend interface;
-- `20_fiabilite_observabilite.md` â€” reliability and observability;
-- `21_audit_mcp_agent_conversationnel.md` â€” MCP and conversational-agent audit;
-- `22_validation_finale_end_to_end.md` â€” final end-to-end validation;
-- `23_audit_configuration_securite.md` â€” configuration and security audit.
+- `19_interface_web.md` - frontend interface;
+- `20_fiabilite_observabilite.md` - reliability and observability;
+- `21_audit_mcp_agent_conversationnel.md` - MCP and conversational-agent audit;
+- `22_validation_finale_end_to_end.md` - final end-to-end validation;
+- `23_audit_configuration_securite.md` - configuration and security audit;
+- `24_matrice_tracabilite_exigences_pfe.md` - PFE requirement traceability;
+- `25_guide_demonstration_finale.md` - controlled final demonstration;
+- `26_liste_captures_finales.md` - final screenshot checklist;
+- `27_integration_virustotal.md` - VirusTotal integration;
+- `28_alignement_rapport_final_pfe.md` - final report alignment;
+- `29_snapshot_demonstration_stable.md` - stable demonstration snapshot;
+- `30_release_finale_pfe.md` - final release procedure.
+
+The defense deck is available in
+`presentation/ThreatIntelMCP_Soutenance_PFE.pptx`.
 
 FastAPI also generates interactive OpenAPI documentation from the implemented routes and Pydantic schemas.
 
@@ -644,10 +659,12 @@ FastAPI also generates interactive OpenAPI documentation from the implemented ro
 
 ### PFE delivery
 
-- align the written report with the implemented architecture;
-- prepare demonstration scenarios for REST, frontend and MCP;
-- capture final screenshots;
-- prepare the presentation and delivery package.
+- [x] align the written report with the implemented architecture;
+- [x] prepare demonstration scenarios for REST, frontend and MCP;
+- [ ] capture the final screenshots on the frozen local demonstration system;
+- [x] prepare the presentation and delivery procedures;
+- [ ] execute the database backup and create the final Git tag after the
+  screenshots and report are frozen.
 
 ### Post-PFE development
 
@@ -656,7 +673,7 @@ FastAPI also generates interactive OpenAPI documentation from the implemented ro
 - scheduled MITRE ATT&CK synchronization;
 - scheduled incremental GitHub Advisory synchronization;
 - historical topic snapshots and alerting;
-- optional CISA KEV, URLhaus, MISP and VirusTotal integrations;
+- optional CISA KEV, URLhaus and MISP integrations;
 - hybrid semantic and keyword retrieval;
 - continuous monitoring and deployment automation.
 

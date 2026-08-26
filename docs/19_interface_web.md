@@ -273,15 +273,68 @@ La page Indicators accepte les types d’indicateurs suivants :
 
 L’indicateur est normalisé et son type est détecté automatiquement.
 
-La recherche peut combiner :
+Lors de chaque investigation, le frontend demande simultanément :
 
-* les occurrences locales extraites des analyses ;
-* les articles associés ;
-* les entités de menace associées ;
-* les informations AlienVault OTX lorsque l’option est activée ;
-* le scoring de menace et de confiance.
+* la corrélation multi-source de l’indicateur ;
+* son scoring de menace et de confiance ;
+* l’enrichissement VirusTotal ;
+* l’enrichissement AlienVault OTX.
 
-L’enrichissement OTX est facultatif afin de réduire les appels externes et de distinguer clairement les données locales des données externes.
+VirusTotal et AlienVault OTX sont présentés comme les principales sources
+externes de renseignement. Les occurrences d’articles et les entités extraites
+localement sont affichées ensuite comme preuves complémentaires.
+
+La carte VirusTotal peut afficher :
+
+* le rapport entre les détections malveillantes et le nombre de moteurs ;
+* les nombres de résultats malveillants, suspects et non détectés ;
+* la réputation de la ressource ;
+* des exemples de détection par moteur de sécurité ;
+* la date de dernière analyse ;
+* un lien vers le rapport VirusTotal ;
+* l’état du cache ;
+* un avertissement lorsque le dernier rapport en cache est expiré.
+
+Lorsque VirusTotal ne possède aucun rapport pour l’indicateur, l’interface
+affiche explicitement cette absence sans présenter l’indicateur comme
+inoffensif.
+
+Pour un hash de fichier, ThreatIntelMCP transmet uniquement l’empreinte à
+VirusTotal. Aucun fichier n’est téléversé par le frontend ou le backend.
+
+La carte AlienVault OTX peut afficher :
+
+* le nombre de pulses communautaires ;
+* la réputation ;
+* le pays et le code pays ;
+* le réseau ou l’ASN ;
+* les autres renseignements disponibles dans le cache OTX.
+
+Une détection VirusTotal ou une présence dans des pulses OTX constitue un
+renseignement à analyser, et non une preuve automatique de compromission.
+
+Les résultats locaux complémentaires comprennent :
+
+* les articles dans lesquels l’indicateur a été observé ;
+* les CVE associées ;
+* les malwares ;
+* les techniques MITRE ATT&CK ;
+* les groupes APT ;
+* les secteurs ciblés ;
+* les technologies affectées.
+
+La page affiche enfin :
+
+* le score et le niveau de menace ;
+* le score et le niveau de confiance ;
+* la priorité ;
+* l’action recommandée ;
+* les facteurs explicatifs et les avertissements disponibles.
+
+Une absence d’article local n’empêche pas l’investigation. L’évaluation peut
+être produite à partir des renseignements VirusTotal et OTX disponibles, les
+preuves locales renforçant ensuite la confiance lorsqu’elles corroborent ces
+sources.
 
 ### 7.6 Emerging Topics
 

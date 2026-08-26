@@ -42,6 +42,17 @@ IncludeOTXQuery = Annotated[
     ),
 ]
 
+IncludeVirusTotalQuery = Annotated[
+    bool,
+    Query(
+        description=(
+            "Enable read-only VirusTotal "
+            "intelligence retrieval and "
+            "24-hour local cache updates."
+        ),
+    ),
+]
+
 
 router = APIRouter(
     prefix="/api/v1/indicators",
@@ -57,6 +68,9 @@ router = APIRouter(
 def correlate_threat_indicator(
     indicator: IndicatorQuery,
     include_otx: IncludeOTXQuery = False,
+    include_virustotal: (
+        IncludeVirusTotalQuery
+    ) = False,
 ) -> dict:
     normalized_input = indicator.strip()
 
@@ -64,6 +78,9 @@ def correlate_threat_indicator(
         return correlate_indicator_service(
             normalized_input,
             include_otx=include_otx,
+            include_virustotal=(
+                include_virustotal
+            ),
         )
     except ValueError as error:
         raise HTTPException(
@@ -82,6 +99,9 @@ def correlate_threat_indicator(
 def score_threat_indicator(
     indicator: IndicatorQuery,
     include_otx: IncludeOTXQuery = False,
+    include_virustotal: (
+        IncludeVirusTotalQuery
+    ) = False,
 ) -> dict:
     normalized_input = indicator.strip()
 
@@ -89,6 +109,9 @@ def score_threat_indicator(
         return score_indicator_service(
             normalized_input,
             include_otx=include_otx,
+            include_virustotal=(
+                include_virustotal
+            ),
         )
     except ValueError as error:
         raise HTTPException(

@@ -1,4 +1,3 @@
-
 from database.correlation_repository import (
     get_article_correlation_data,
     get_article_ids_by_indicator,
@@ -6,6 +5,9 @@ from database.correlation_repository import (
 from enrichment.ioc_normalizer import normalize_ioc
 from enrichment.otx_lookup_service import (
     lookup_otx_indicator,
+)
+from enrichment.virustotal_lookup_service import (
+    lookup_virustotal_indicator,
 )
 from correlation.entity_validation import (
     normalize_entity_value,
@@ -81,7 +83,11 @@ def _collect_entity_evidence(
 
     return results
 
-def correlate_indicator(indicator,include_otx=True):
+def correlate_indicator(
+    indicator,
+    include_otx=True,
+    include_virustotal=False,
+):
     normalized = normalize_ioc(indicator)
 
     if normalized is None:
@@ -91,11 +97,20 @@ def correlate_indicator(indicator,include_otx=True):
 
 
     otx_enrichment = None
+    virustotal_enrichment = None
 
     if include_otx:
       otx_enrichment = lookup_otx_indicator(
             normalized["indicator"],
             normalized["indicator_type"],
+        )
+
+    if include_virustotal:
+        virustotal_enrichment = (
+            lookup_virustotal_indicator(
+                normalized["indicator"],
+                normalized["indicator_type"],
+            )
         )
 
     article_ids = get_article_ids_by_indicator(
@@ -146,4 +161,7 @@ def correlate_indicator(indicator,include_otx=True):
         "supporting_articles": supporting_articles,
         "related_entities": related_entities,
         "otx_enrichment": otx_enrichment,
+        "virustotal_enrichment": (
+            virustotal_enrichment
+        ),
     }

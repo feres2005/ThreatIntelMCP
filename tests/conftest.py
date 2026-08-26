@@ -55,7 +55,8 @@ def _reset_integration_database(engine):
                     public.github_advisory_vulnerabilities,
                     public.intelligence_embeddings,
                     public.mitre_techniques,
-                    public.otx_indicators
+                    public.otx_indicators,
+                    public.virustotal_indicators
                 RESTART IDENTITY CASCADE
                 """
             )

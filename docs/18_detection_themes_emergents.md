@@ -440,9 +440,9 @@ Des évolutions possibles sont :
 
 Ces améliorations peuvent être ajoutées sans modifier le contrat principal du service.
 
-## 11. Validation finale
+## 11. Validation historique du jalon Day 9A
 
-La validation finale Day 9A confirme :
+La validation réalisée à la fin du jalon Day 9A confirmait :
 
 - la compilation de tous les modules de production ;
 - l’absence de dépendances Python cassées ;
@@ -454,4 +454,5 @@ La validation finale Day 9A confirme :
 
 Les tests PostgreSQL utilisent exclusivement `threat_intel_test_db`.
 
-La fonctionnalité de détection des thèmes émergents est considérée comme terminée pour la version PFE actuelle.
+
+La fonctionnalité de détection des thèmes émergents a été considérée comme terminée à l’issue du jalon Day 9A. Les chiffres globaux de la version finale du PFE sont présentés dans `docs/28_alignement_rapport_final_pfe.md`.

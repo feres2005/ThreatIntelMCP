@@ -167,6 +167,21 @@ def test_ping_returns_server_status():
             {},
         ),
         (
+            "lookup_virustotal_indicator",
+            (
+                "lookup_virustotal_"
+                "indicator_service"
+            ),
+            (
+                (
+                    "1e809b5361699f505e401acf98f79034"
+                    "fc89c4e95c9a99aabf88628da836ce3a"
+                ),
+                "FileHash-SHA256",
+            ),
+            {},
+        ),
+        (
             "correlate_threat_indicator",
             "correlate_indicator_service",
             (
@@ -174,6 +189,7 @@ def test_ping_returns_server_status():
             ),
             {
                 "include_otx": False,
+                "include_virustotal": False,
             },
         ),
         (
@@ -207,6 +223,7 @@ def test_ping_returns_server_status():
             ),
             {
                 "include_otx": False,
+                "include_virustotal": True,
             },
         ),
                 (

@@ -278,6 +278,61 @@ export interface OtxIndicatorEnrichment {
   last_checked: string
 }
 
+export interface VirusTotalCommunityVotes {
+  harmless: number
+  malicious: number
+}
+
+export interface VirusTotalDetection {
+  engine_name: string
+  category: 'malicious' | 'suspicious'
+  result: string | null
+  method: string | null
+}
+
+export interface VirusTotalIndicatorEnrichment {
+  indicator: string
+  indicator_type: IndicatorType
+  report_available: boolean
+  resource_type:
+    | 'file'
+    | 'ip_address'
+    | 'domain'
+    | 'url'
+    | null
+  resource_id: string | null
+  malicious_count: number
+  suspicious_count: number
+  harmless_count: number
+  undetected_count: number
+  timeout_count: number
+  failure_count: number
+  type_unsupported_count: number
+  confirmed_timeout_count: number
+  total_engine_count: number
+  total_result_count: number
+  reputation: number | null
+  community_votes: VirusTotalCommunityVotes
+  detections: VirusTotalDetection[]
+  categories: string[]
+  tags: string[]
+  names: string[]
+  meaningful_name: string | null
+  file_type: string | null
+  country: string | null
+  asn: number | null
+  as_owner: string | null
+  last_analysis_date: string | null
+  permalink: string | null
+  last_checked: string
+  source: 'virustotal'
+  cache_status:
+    | 'fresh'
+    | 'refreshed'
+    | 'stale_fallback'
+  is_stale: boolean
+}
+
 export interface IndicatorCorrelationResponse {
   indicator: string
   indicator_type: IndicatorType
@@ -286,6 +341,8 @@ export interface IndicatorCorrelationResponse {
   supporting_articles: SupportingIndicatorArticle[]
   related_entities: IndicatorRelatedEntities
   otx_enrichment: OtxIndicatorEnrichment | null
+  virustotal_enrichment:
+    VirusTotalIndicatorEnrichment | null
 }
 export interface IndicatorScoringTarget {
   entity_type: 'indicator'

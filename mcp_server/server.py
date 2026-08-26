@@ -43,6 +43,10 @@ from correlation.article_investigation_service import (
 from enrichment.otx_lookup_service import (
     lookup_otx_indicator as lookup_otx_indicator_service,
 )
+from enrichment.virustotal_lookup_service import (
+    lookup_virustotal_indicator
+    as lookup_virustotal_indicator_service,
+)
 
 from correlation.indicator_correlation_service import (
     correlate_indicator as correlate_indicator_service,
@@ -326,10 +330,34 @@ def lookup_otx_indicator(
         indicator_type,
     )
 
+
+@mcp.tool()
+def lookup_virustotal_indicator(
+    indicator: str,
+    indicator_type: str,
+) -> dict | None:
+    """
+    Retrieve a read-only VirusTotal report for an
+    IP address, domain, URL, or file hash.
+
+    The tool reuses a 24-hour PostgreSQL cache,
+    records genuine missing reports, and can
+    return stale cached intelligence if the
+    external service is unavailable or limited.
+
+    No file is uploaded and no scan is requested.
+    """
+    return lookup_virustotal_indicator_service(
+        indicator,
+        indicator_type,
+    )
+
+
 @mcp.tool()
 def correlate_threat_indicator(
     indicator: str,
     include_otx: bool = True,
+    include_virustotal: bool = True,
 ) -> dict:
     """
     Correlate a supported IOC with articles and
@@ -338,7 +366,7 @@ def correlate_threat_indicator(
     The result includes supporting articles,
     CVEs, malware, MITRE techniques, APT groups,
     targeted sectors, affected technologies,
-    and optional OTX enrichment.
+    and optional OTX and VirusTotal enrichment.
 
     Associations are based on supporting article
     evidence and do not prove attribution.
@@ -346,6 +374,9 @@ def correlate_threat_indicator(
     return correlate_indicator_service(
         indicator,
         include_otx=include_otx,
+        include_virustotal=(
+            include_virustotal
+        ),
     )
 
 @mcp.tool()
@@ -393,6 +424,7 @@ def score_threat_article(
 def score_threat_indicator(
     indicator: str,
     include_otx: bool = True,
+    include_virustotal: bool = True,
 ) -> dict:
     """
     Calculate explainable threat, confidence,
@@ -400,8 +432,10 @@ def score_threat_indicator(
 
     The result combines supporting articles,
     related threat entities, local CVE and MITRE
-    enrichment, optional OTX evidence, warnings,
-    and the recommended SOC action.
+    enrichment, optional OTX and VirusTotal
+    evidence, warnings, and the recommended SOC
+    action. External intelligence has the primary
+    weight; local articles provide corroboration.
 
     Correlation indicates co-reporting evidence
     and does not prove attribution or causality.
@@ -409,6 +443,9 @@ def score_threat_indicator(
     return score_indicator_service(
         indicator,
         include_otx=include_otx,
+        include_virustotal=(
+            include_virustotal
+        ),
     )
 @mcp.tool()
 def get_pipeline_status() -> dict:

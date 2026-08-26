@@ -22,6 +22,7 @@ CONTROLLED_CORRELATION = {
         "affected_technologies": [],
     },
     "otx_enrichment": None,
+    "virustotal_enrichment": None,
 }
 
 CONTROLLED_INDICATOR_SCORE = {
@@ -67,7 +68,7 @@ CONTROLLED_INDICATOR_SCORE = {
 }
 
 
-def test_indicator_correlation_defaults_otx_disabled(
+def test_indicator_correlation_defaults_external_sources_disabled(
     monkeypatch,
 ):
     service_calls = []
@@ -75,10 +76,14 @@ def test_indicator_correlation_defaults_otx_disabled(
     def fake_correlate(
         indicator,
         include_otx=True,
+        include_virustotal=False,
     ):
         service_calls.append({
             "indicator": indicator,
             "include_otx": include_otx,
+            "include_virustotal": (
+                include_virustotal
+            ),
         })
         return CONTROLLED_CORRELATION
 
@@ -102,11 +107,12 @@ def test_indicator_correlation_defaults_otx_disabled(
         {
             "indicator": "8.8.8.8",
             "include_otx": False,
+            "include_virustotal": False,
         }
     ]
 
 
-def test_indicator_scoring_allows_otx_opt_in(
+def test_indicator_scoring_allows_external_intelligence_opt_in(
     monkeypatch,
 ):
     service_calls = []
@@ -114,10 +120,14 @@ def test_indicator_scoring_allows_otx_opt_in(
     def fake_score(
         indicator,
         include_otx=True,
+        include_virustotal=False,
     ):
         service_calls.append({
             "indicator": indicator,
             "include_otx": include_otx,
+            "include_virustotal": (
+                include_virustotal
+            ),
         })
         return CONTROLLED_INDICATOR_SCORE
 
@@ -133,6 +143,7 @@ def test_indicator_scoring_allows_otx_opt_in(
             params={
                 "indicator": "8.8.8.8",
                 "include_otx": "true",
+                "include_virustotal": "true",
             },
         )
 
@@ -144,8 +155,95 @@ def test_indicator_scoring_allows_otx_opt_in(
         {
             "indicator": "8.8.8.8",
             "include_otx": True,
+            "include_virustotal": True,
         }
     ]
+
+
+def test_indicator_correlation_serializes_virustotal(
+    monkeypatch,
+):
+    correlation = {
+        **CONTROLLED_CORRELATION,
+        "virustotal_enrichment": {
+            "indicator": "controlled.example",
+            "indicator_type": "domain",
+            "report_available": True,
+            "resource_type": "domain",
+            "resource_id": "controlled.example",
+            "malicious_count": 7,
+            "suspicious_count": 1,
+            "harmless_count": 20,
+            "undetected_count": 32,
+            "timeout_count": 1,
+            "failure_count": 0,
+            "type_unsupported_count": 1,
+            "confirmed_timeout_count": 0,
+            "total_engine_count": 60,
+            "total_result_count": 62,
+            "reputation": -5,
+            "community_votes": {
+                "harmless": 2,
+                "malicious": 4,
+            },
+            "detections": [
+                {
+                    "engine_name": "Controlled AV",
+                    "category": "malicious",
+                    "result": "phishing",
+                    "method": "blacklist",
+                }
+            ],
+            "categories": ["phishing"],
+            "tags": ["phishing"],
+            "names": [],
+            "meaningful_name": None,
+            "file_type": None,
+            "country": None,
+            "asn": None,
+            "as_owner": None,
+            "last_analysis_date": (
+                "2026-08-24T08:29:49+00:00"
+            ),
+            "permalink": (
+                "https://www.virustotal.com/gui/"
+                "domain/controlled.example"
+            ),
+            "last_checked": (
+                "2026-08-24T13:40:51+02:00"
+            ),
+            "source": "virustotal",
+            "cache_status": "fresh",
+            "is_stale": False,
+        },
+    }
+
+    monkeypatch.setattr(
+        indicators_router,
+        "correlate_indicator_service",
+        lambda indicator, include_otx,
+        include_virustotal: correlation,
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/indicators/correlation",
+            params={
+                "indicator": "controlled.example",
+                "include_virustotal": "true",
+            },
+        )
+
+    assert response.status_code == 200
+
+    enrichment = response.json()[
+        "virustotal_enrichment"
+    ]
+
+    assert enrichment["source"] == "virustotal"
+    assert enrichment["malicious_count"] == 7
+    assert enrichment["total_engine_count"] == 60
+    assert enrichment["cache_status"] == "fresh"
 
 @pytest.mark.contract
 def test_indicator_scoring_returns_structured_warnings(
@@ -167,7 +265,8 @@ def test_indicator_scoring_returns_structured_warnings(
     monkeypatch.setattr(
         indicators_router,
         "score_indicator_service",
-        lambda indicator, include_otx: warning_report,
+        lambda indicator, include_otx,
+        include_virustotal: warning_report,
     )
 
     with TestClient(app) as client:
@@ -202,6 +301,7 @@ def test_invalid_ioc_service_error_becomes_422(
     def fake_invalid_indicator(
         indicator,
         include_otx,
+        include_virustotal,
     ):
         raise ValueError(
             "A valid supported IOC is required."
@@ -253,6 +353,7 @@ def test_invalid_indicator_http_input_returns_422(
     def unexpected_service_call(
         indicator,
         include_otx,
+        include_virustotal,
     ):
         raise AssertionError(
             "Indicator service must not run "

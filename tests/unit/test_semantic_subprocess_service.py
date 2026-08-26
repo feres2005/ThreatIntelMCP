@@ -127,6 +127,99 @@ def test_worker_returns_decoded_json(
     ] == "error"
 
 
+def test_worker_uses_synchronous_fallback_when_needed(
+    monkeypatch,
+):
+    async def unsupported_create(*args, **kwargs):
+        raise NotImplementedError
+
+    calls = []
+
+    def fake_run(arguments, **options):
+        calls.append({
+            "arguments": arguments,
+            "options": options,
+        })
+
+        return service.subprocess.CompletedProcess(
+            args=arguments,
+            returncode=0,
+            stdout=b'[{"article_id": 2563}]',
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(
+        service.asyncio,
+        "create_subprocess_exec",
+        unsupported_create,
+    )
+    monkeypatch.setattr(
+        service.subprocess,
+        "run",
+        fake_run,
+    )
+
+    result = asyncio.run(
+        service.run_semantic_search_worker(
+            "controlled Windows query",
+            4,
+        )
+    )
+
+    assert result == [{"article_id": 2563}]
+    assert len(calls) == 1
+
+    call = calls[0]
+
+    assert call["arguments"] == [
+        service.sys.executable,
+        "-m",
+        "semantic_search.search_worker",
+        "controlled Windows query",
+        "4",
+    ]
+    assert call["options"]["timeout"] == (
+        service.WORKER_TIMEOUT_SECONDS
+    )
+    assert call["options"]["shell"] is False
+
+
+def test_synchronous_fallback_maps_timeout(
+    monkeypatch,
+):
+    async def unsupported_create(*args, **kwargs):
+        raise NotImplementedError
+
+    def fake_run(arguments, **options):
+        raise service.subprocess.TimeoutExpired(
+            cmd=arguments,
+            timeout=options["timeout"],
+        )
+
+    monkeypatch.setattr(
+        service.asyncio,
+        "create_subprocess_exec",
+        unsupported_create,
+    )
+    monkeypatch.setattr(
+        service.subprocess,
+        "run",
+        fake_run,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Semantic search worker timed out.",
+    ):
+        asyncio.run(
+            service.run_semantic_search_worker(
+                "controlled timeout query",
+                3,
+            )
+        )
+
+
+
 @pytest.mark.parametrize(
     (
         "stderr",
@@ -143,6 +236,7 @@ def test_worker_returns_decoded_json(
         ),
     ],
 )
+
 def test_worker_reports_nonzero_exit(
     monkeypatch,
     stderr,

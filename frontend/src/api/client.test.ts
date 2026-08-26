@@ -58,6 +58,7 @@ describe('API client', () => {
         getIndicatorScoring({
           indicator: '  example.com  ',
           includeOtx: false,
+          includeVirusTotal: true,
         }),
       ).resolves.toEqual(responseBody)
 
@@ -66,6 +67,7 @@ describe('API client', () => {
           '/api/v1/indicators/score'
           + '?indicator=example.com'
           + '&include_otx=false'
+          + '&include_virustotal=true'
         ),
         expect.any(Object),
       )
@@ -212,6 +214,7 @@ describe('API client', () => {
             affected_technologies: [],
           },
           otx_enrichment: null,
+          virustotal_enrichment: null,
         }
 
         const fetchMock = vi.fn().mockResolvedValue({
@@ -225,6 +228,7 @@ describe('API client', () => {
           getIndicatorCorrelation({
             indicator: '  example.com  ',
             includeOtx: true,
+            includeVirusTotal: true,
           }),
         ).resolves.toEqual(responseBody)
 
@@ -233,6 +237,7 @@ describe('API client', () => {
             '/api/v1/indicators/correlation'
             + '?indicator=example.com'
             + '&include_otx=true'
+            + '&include_virustotal=true'
           ),
           expect.any(Object),
         )

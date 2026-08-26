@@ -105,6 +105,10 @@ Cette organisation présente plusieurs avantages. D'une part, elle évite de mé
 
 Le serveur MCP développé dans ce projet expose plusieurs outils (tools) permettant d'interroger la plateforme de Threat Intelligence en langage naturel. Chaque outil répond à un besoin spécifique de l'analyste SOC et permet d'accéder aux informations stockées dans la base PostgreSQL.
 
+L'audit final de la version PFE recense **31 outils MCP**. Ce total inclut la
+consultation VirusTotal, les recherches et preuves structurées, la corrélation,
+le scoring, l'état du pipeline et les actions protégées par confirmation.
+
 Les outils implémentés couvrent la recherche d'articles de cybersécurité, la consultation des vulnérabilités CVE enrichies, ainsi que la recherche d'informations relatives aux malwares, aux techniques MITRE ATT&CK, aux groupes APT, aux secteurs ciblés et aux technologies affectées.
 
 

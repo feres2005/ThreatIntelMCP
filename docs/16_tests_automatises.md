@@ -1,5 +1,11 @@
 ﻿# Tests automatisés et couverture de ThreatIntelMCP
 
+> **Note d'alignement final :** ce chapitre conserve l'état historique de la
+> journée 7, lorsque 897 tests et une mesure ponctuelle de 80,03 % avaient été
+> obtenus. La configuration finale ne contient plus de seuil de couverture
+> automatique. Le bilan PFE actuel est documenté dans
+> `22_validation_finale_end_to_end.md` et `28_alignement_rapport_final_pfe.md`.
+
 ## 1. Objectif
 
 La journée 7 ajoute une stratégie complète de tests automatisés au projet ThreatIntelMCP.
@@ -16,7 +22,7 @@ Les objectifs sont :
 
 ---
 
-## 2. Résultat final
+## 2. Résultat historique du jalon Day 7
 
 La collecte pytest contient :
 
@@ -190,7 +196,7 @@ Tous les autres avertissements restent traités comme des erreurs.
 
 ---
 
-## 6. Configuration de la couverture
+## 6. Configuration de couverture utilisée au jalon Day 7
 
 La couverture est configurée dans `.coveragerc`.
 

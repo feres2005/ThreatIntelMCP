@@ -1,5 +1,6 @@
-from scoring.scoring_service import (
-    build_scoring_report,
+from scoring.indicator_intelligence_scoring import (
+    build_indicator_intelligence_scoring_report
+    as build_scoring_report,
 )
 from scoring.threat_scoring import (
     score_article_severity,
@@ -183,6 +184,9 @@ def build_indicator_scoring_report(
                 )
 
     scoring = build_scoring_report(
+        virustotal_record=correlation.get(
+            "virustotal_enrichment"
+        ),
         article_severity=(
             _select_highest_article_severity(
                 supporting_articles
@@ -227,10 +231,14 @@ def build_indicator_scoring_report(
 def score_indicator(
     indicator,
     include_otx=True,
+    include_virustotal=False,
 ):
     correlation = correlate_indicator(
         indicator,
         include_otx=include_otx,
+        include_virustotal=(
+            include_virustotal
+        ),
     )
 
     related_entities = correlation.get(

@@ -1,5 +1,5 @@
 from typing import Annotated
-
+import logging
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -19,7 +19,7 @@ router = APIRouter(
     prefix="/api/v1/search",
     tags=["Search"],
 )
-
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -60,6 +60,11 @@ async def semantic_search_articles(
             limit,
         )
     except RuntimeError as error:
+        logger.exception(
+            "Semantic search worker failed: %s",
+            error,
+        )
+
         raise HTTPException(
             status_code=(
                 status.HTTP_503_SERVICE_UNAVAILABLE
